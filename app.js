@@ -19,20 +19,26 @@
     return !!GAS_URL;
   }
 
-  async function apiPost(action, payload = {}) {
-    if (!apiEnabled()) throw new Error("API GAS non configurée (GAS_URL vide).");
-    const body = { action, ...payload };
-    const res = await fetch(GAS_URL, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(body)
-    });
-    const text = await res.text();
+ function apiPost(action, payload = {}) {
+  const params = new URLSearchParams({ action, ...payload });
+
+  return fetch(GAS_URL, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/x-www-form-urlencoded;charset=UTF-8"
+    },
+    body: params.toString()
+  })
+  .then(r => r.text())
+  .then(t => {
     let data;
-    try { data = JSON.parse(text); } catch { data = { ok:false, error:"Réponse non JSON", raw:text }; }
+    try { data = JSON.parse(t); }
+    catch { throw new Error("Réponse non JSON"); }
     if (!data.ok) throw new Error(data.error || "Erreur API");
     return data;
-  }
+  });
+}
+
 
   // 🔐 Session (token) persistée
   const TOKEN_KEY = "marcq_auth_token";
