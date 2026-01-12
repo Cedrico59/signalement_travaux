@@ -765,6 +765,15 @@ async function undoDelete() {
   }
 }
 
+function saveLocal() {
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(reports));
+  } catch (e) {
+    console.error("Erreur sauvegarde locale", e);
+  }
+}
+
+
 async function refreshFromServer() {
   if (!apiEnabled()) { renderAll(); return; }
   const sess = loadSession();
