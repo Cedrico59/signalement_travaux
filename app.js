@@ -11,7 +11,7 @@
   
   // 🌐 Google Apps Script WebApp (API)
   // Collez ici l'URL de la WebApp déployée (Apps Script).
-  const GAS_URL = "https://script.google.com/macros/s/AKfycbwXjm5OsYbHgfHbQWgO1rcqOIf9Y6Jb9BJSKUK_rQ35zCB203j0Aq7HCeibUDyRHRYd/exec"; // ex: "https://script.google.com/macros/s/XXXX/exec"
+  const GAS_URL = "https://script.google.com/macros/s/AKfycbyiuSQAJACiUHcyq-Pol_7flD7VwN0IiZfaB8GC3EoeLbaRgX4_2jJoCO02VtfIdixR/exec"; // ex: "https://script.google.com/macros/s/XXXX/exec"
 
   const SECTEURS = ["Hautes Loges - Briqueterie", "Bourg", "Buisson - Delcencerie", "Mairie - Quesne", "Pont - Plouich - Clémenceau", "Cimetière Delcencerie", "Cimetière Pont", "Ferme aux Oies"];
 
