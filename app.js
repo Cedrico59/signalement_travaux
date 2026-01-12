@@ -19,25 +19,25 @@
     return !!GAS_URL;
   }
 
- function apiPost(action, payload = {}) {
+async function apiPost(action, payload = {}) {
   const params = new URLSearchParams({ action, ...payload });
 
-  return fetch(GAS_URL, {
+  const res = await fetch(GAS_URL, {
     method: "POST",
-    headers: {
-      "Content-Type": "application/x-www-form-urlencoded;charset=UTF-8"
-    },
-    body: params.toString()
-  })
-  .then(r => r.text())
-  .then(t => {
-    let data;
-    try { data = JSON.parse(t); }
-    catch { throw new Error("Réponse non JSON"); }
-    if (!data.ok) throw new Error(data.error || "Erreur API");
-    return data;
+    body: params
   });
+
+  const text = await res.text();
+  let data;
+  try {
+    data = JSON.parse(text);
+  } catch {
+    throw new Error("Réponse serveur invalide");
+  }
+  if (!data.ok) throw new Error(data.error || "Erreur API");
+  return data;
 }
+
 
 
   // 🔐 Session (token) persistée
