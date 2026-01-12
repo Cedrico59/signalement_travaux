@@ -1,64 +1,3 @@
-
-  function populateLoginSecteurs() {
-    const sel = document.getElementById("loginSecteur");
-    if (!sel) return;
-    sel.innerHTML = "";
-    SECTEURS.forEach(s => {
-      const o = document.createElement("option");
-      o.value = s; o.textContent = s;
-      sel.appendChild(o);
-    });
-  }
-
-  async function logout() {
-    clearSession();
-    location.reload();
-  }
-
-  async function openHistoryAdmin() {
-    if (!isAdmin()) { alert("Historique réservé admin"); return; }
-    const sess = loadSession();
-    if (!sess) { alert("Session manquante"); return; }
-    const data = await apiPost("getHistory", { token: sess.token });
-    const list = (data.history || []).slice(-200).reverse().map(h =>
-      `${h.date} | ${h.role}${h.secteur ? "(" + h.secteur + ")" : ""} | ${h.action} | ${h.details}`
-    ).join("\n");
-    document.getElementById("historyList").textContent = list || "Aucune action";
-    document.getElementById("adminPanel").style.display = "block";
-  }
-
-
-  async function loginViaGAS() {
-    const role = document.getElementById("loginRole").value;
-    const secteur = document.getElementById("loginSecteur").value;
-    const password = document.getElementById("loginPassword").value;
-
-    if (!password) { alert("Mot de passe requis"); return; }
-    if (role === "secteur" && !secteur) { alert("Choisis un secteur"); return; }
-
-    const data = await apiPost("login", { role, secteur, password });
-
-    const user = { role: data.role, secteur: data.secteur || "" };
-    currentUser = user;
-    setSession(data.token, user);
-
-    document.getElementById("loginModal")?.remove();
-    await refreshFromServer();
-  }
-
-  function loginOfflineDemo() {
-    const role = document.getElementById("loginRole").value;
-    const secteur = document.getElementById("loginSecteur").value;
-    currentUser = role === "admin" ? { role:"admin" } : { role:"secteur", secteur };
-    document.getElementById("loginModal")?.remove();
-    renderAll();
-  }
-
-  let currentUser = null; // {role:'admin'|'secteur', secteur?:string}
-
-  function isAdmin(){return currentUser && currentUser.role==='admin';}
-  function canSeeReport(r){ if (isAdmin()) return true; if (!currentUser) return false; return r.secteur===currentUser.secteur; }
-
 (() => {
   "use strict";
 
@@ -72,7 +11,7 @@
   
   // 🌐 Google Apps Script WebApp (API)
   // Collez ici l'URL de la WebApp déployée (Apps Script).
-  const GAS_URL = ""; // ex: "https://script.google.com/macros/s/XXXX/exec"
+  const GAS_URL = "https://script.google.com/macros/s/AKfycbwXjm5OsYbHgfHbQWgO1rcqOIf9Y6Jb9BJSKUK_rQ35zCB203j0Aq7HCeibUDyRHRYd/exec"; // ex: "https://script.google.com/macros/s/XXXX/exec"
 
   const SECTEURS = ["Hautes Loges - Briqueterie", "Bourg", "Buisson - Delcencerie", "Mairie - Quesne", "Pont - Plouich - Clémenceau", "Cimetière Delcencerie", "Cimetière Pont", "Ferme aux Oies"];
 
@@ -115,17 +54,87 @@
     if (!token || !userRaw) return null;
     try {
       const user = JSON.parse(userRaw);
+      currentUser = user;
       return { token, user };
     } catch {
       return null;
     }
   }
-const DEFAULT_CENTER = [50.676, 3.086];
+// 🔐 Auth état
+let currentUser = null; // { role:'admin'|'secteur', secteur?: string }
 
-  
-  // 🧾 Numérotation centralisée (Google Sheets via WebApp GAS)
-  // Mettez l'URL de votre WebApp GAS ici. Si vide -> fallback compteur local.
-  const CENTRAL_DOSSIER_URL = ""; // ex: "https://script.google.com/macros/s/XXXXX/exec"
+function isAdmin() { return currentUser && currentUser.role === "admin"; }
+function canSeeReport(r) {
+  if (isAdmin()) return true;
+  if (!currentUser) return false;
+  return r.secteur === currentUser.secteur;
+}
+
+function populateLoginSecteurs() {
+  const sel = document.getElementById("loginSecteur");
+  if (!sel) return;
+  sel.innerHTML = "";
+  SECTEURS.forEach(s => {
+    const o = document.createElement("option");
+    o.value = s;
+    o.textContent = s;
+    sel.appendChild(o);
+  });
+}
+
+async function loginViaGAS() {
+  const role = document.getElementById("loginRole")?.value || "admin";
+  const secteur = document.getElementById("loginSecteur")?.value || "";
+  const password = document.getElementById("loginPassword")?.value || "";
+
+  if (!password) { alert("Mot de passe requis"); return; }
+  if (role === "secteur" && !secteur) { alert("Choisis un secteur"); return; }
+
+  const data = await apiPost("login", { role, secteur, password });
+
+  const user = { role: data.role, secteur: data.secteur || "" };
+  currentUser = user;
+  setSession(data.token, user);
+
+  const modal = document.getElementById("loginModal");
+  if (modal) modal.remove();
+
+  await refreshFromServer();
+}
+
+function loginOfflineDemo() {
+  const role = document.getElementById("loginRole")?.value || "admin";
+  const secteur = document.getElementById("loginSecteur")?.value || "";
+  currentUser = (role === "admin") ? { role: "admin" } : { role: "secteur", secteur };
+  const modal = document.getElementById("loginModal");
+  if (modal) modal.remove();
+  renderAll();
+}
+
+async function logout() {
+  clearSession();
+  location.reload();
+}
+
+async function openHistoryAdmin() {
+  if (!isAdmin()) { alert("Historique réservé admin"); return; }
+  const sess = loadSession();
+  if (!sess) { alert("Session manquante"); return; }
+
+  const data = await apiPost("getHistory", { token: sess.token });
+  const list = (data.history || [])
+    .slice(-200)
+    .reverse()
+    .map(h => `${h.date} | ${h.role}${h.secteur ? "(" + h.secteur + ")" : ""} | ${h.action} | ${h.details}`)
+    .join("\n");
+
+  const panel = document.getElementById("adminPanel");
+  const out = document.getElementById("historyList");
+  if (out) out.textContent = list || "Aucune action";
+  if (panel) panel.style.display = "block";
+}
+
+const DEFAULT_CENTER = [50.676, 3.086];
 
   function getNextLocalDossierNumber() {
     const year = new Date().getFullYear();
@@ -136,17 +145,12 @@ const DEFAULT_CENTER = [50.676, 3.086];
   }
 
   async function getCentralDossierNumber() {
-  // centralisé via GAS si connecté, sinon fallback local
-  try {
-    const sess = loadSession();
-    if (apiEnabled() && sess) {
-      const data = await apiPost("nextDossier", { token: sess.token });
-      if (data && data.dossierNumber) return data.dossierNumber;
-    }
-  } catch (e) {
-    console.warn("Numéro de dossier centralisé indisponible", e);
-  }
-  return getNextLocalDossierNumber();
+  // Numérotation centralisée via Apps Script (anti-doublons)
+  // Si pas connecté -> fallback compteur local (démo/hors-ligne)
+  const sess = loadSession();
+  if (!apiEnabled() || !sess) return getNextLocalDossierNumber();
+  const data = await apiPost("nextDossier", { token: sess.token });
+  return data.dossierNumber;
 }
 // 🟦 Contour EXACT de Marcq-en-Barœul (source : geo.api.gouv.fr / geometry=contour)
   const MARCQ_POLYGON = [
@@ -528,6 +532,7 @@ const DEFAULT_CENTER = [50.676, 3.086];
   }
 
 // modifiez si besoin
+
   // =========================
   // STATE
   // =========================
@@ -536,6 +541,65 @@ const DEFAULT_CENTER = [50.676, 3.086];
   let selectedId = null;
   let pendingPhotos = [];
   const markers = new Map(); // id -> marker
+// =========================
+// UNDO suppression (admin)
+// =========================
+let lastDeleted = null; // { report, markerLatLng, timeoutId }
+
+function showUndoBar(message) {
+  let bar = document.getElementById("undoBar");
+  if (!bar) {
+    bar = document.createElement("div");
+    bar.id = "undoBar";
+    bar.style.position = "fixed";
+    bar.style.left = "14px";
+    bar.style.right = "14px";
+    bar.style.bottom = "14px";
+    bar.style.zIndex = "4000";
+    bar.style.background = "#111a33";
+    bar.style.border = "1px solid #20305f";
+    bar.style.borderRadius = "14px";
+    bar.style.padding = "10px 12px";
+    bar.style.display = "flex";
+    bar.style.alignItems = "center";
+    bar.style.justifyContent = "space-between";
+    bar.style.gap = "12px";
+    bar.innerHTML = `<span id="undoMsg" style="font-size:13px;"></span>
+                     <button id="undoBtn" class="secondary" type="button" style="width:auto;padding:8px 10px;">↩️ Annuler</button>`;
+    document.body.appendChild(bar);
+  }
+  document.getElementById("undoMsg").textContent = message;
+  bar.style.display = "flex";
+  document.getElementById("undoBtn").onclick = () => undoDelete().catch(e => alert(e.message));
+}
+
+function hideUndoBar() {
+  const bar = document.getElementById("undoBar");
+  if (bar) bar.style.display = "none";
+}
+
+async function undoDelete() {
+  if (!lastDeleted) return;
+  const { report } = lastDeleted;
+  clearTimeout(lastDeleted.timeoutId);
+  lastDeleted = null;
+
+  reports.push(report);
+  saveLocal();
+  renderAll();
+
+  // resync serveur
+  try {
+    const sess = loadSession();
+    if (apiEnabled() && sess) {
+      await apiPost("saveReport", { token: sess.token, reportJson: JSON.stringify(report) });
+    }
+  } catch (e) {
+    console.warn("Undo sync serveur échouée", e);
+  }
+  hideUndoBar();
+}
+
 
   // =========================
   // DOM
@@ -625,6 +689,56 @@ const DEFAULT_CENTER = [50.676, 3.086];
     "Ferme aux Oies": "#546E7A"
   };
 
+  // =========================
+  // LÉGENDE SECTEURS (rétractable)
+  // HTML attendu :
+  // <div id="sectorLegend" class="legend"></div>
+  // =========================
+  function buildSectorLegend() {
+    const box = document.getElementById("sectorLegend");
+    if (!box) return;
+
+    const collapsed = box.dataset.collapsed === "1";
+    const itemsHtml = SECTEURS.map(s => {
+      const c = getSectorColor(s);
+      return `<div class="legend-item" data-secteur="${escapeHtml(s)}">
+        <span class="swatch" style="background:${c}"></span>
+        <span class="label">${escapeHtml(s)}</span>
+      </div>`;
+    }).join("");
+
+    box.innerHTML = `
+      <div class="legend-header">
+        <span>🏷️ Secteurs</span>
+        <button type="button" class="legend-toggle" id="legendToggleBtn">${collapsed ? "Ouvrir" : "Réduire"}</button>
+      </div>
+      <div class="legend-body" style="display:${collapsed ? "none" : "block"}">
+        ${itemsHtml}
+        <div class="legend-note">
+          <div><span class="dot externe"></span> Externe</div>
+          <div><span class="dot interne"></span> Interne</div>
+        </div>
+      </div>
+    `;
+
+    const tbtn = document.getElementById("legendToggleBtn");
+    if (tbtn) {
+      tbtn.onclick = () => {
+        box.dataset.collapsed = (box.dataset.collapsed === "1") ? "0" : "1";
+        buildSectorLegend();
+      };
+    }
+
+    box.querySelectorAll(".legend-item").forEach(div => {
+      div.addEventListener("click", () => {
+        const secteur = div.getAttribute("data-secteur") || "";
+        const q = document.getElementById("q");
+        if (q) { q.value = secteur; renderList(); }
+      });
+    });
+  }
+
+
   function getSectorColor(secteur) {
     return SECTOR_COLORS[secteur] || "#607D8B";
   }
@@ -632,6 +746,7 @@ const DEFAULT_CENTER = [50.676, 3.086];
   function getInterventionDotColor(type) {
     return type === "externe" ? "#D32F2F" : "#2E7D32";
   }
+
   function escapeHtml(str) {
     return (str ?? "").toString()
       .replaceAll("&","&amp;").replaceAll("<","&lt;").replaceAll(">","&gt;")
@@ -641,9 +756,9 @@ const DEFAULT_CENTER = [50.676, 3.086];
   function loadLocal() {
   try {
     const arr = JSON.parse(localStorage.getItem(STORAGE_KEY) || "[]");
-    // On ignore les éléments importés/anciens hors Marcq
-    return (Array.isArray(arr) ? arr : []).filter(
-      r => r && Number.isFinite(r.lat) && Number.isFinite(r.lng) && isInMarcq(r.lat, r.lng)
+    // On ignore les éléments hors Marcq
+    return (Array.isArray(arr) ? arr : []).filter(r =>
+      r && Number.isFinite(r.lat) && Number.isFinite(r.lng) && isInMarcq(r.lat, r.lng)
     );
   } catch {
     return [];
@@ -654,7 +769,6 @@ async function refreshFromServer() {
   if (!apiEnabled()) { renderAll(); return; }
   const sess = loadSession();
   if (!sess) { renderAll(); return; }
-
   const data = await apiPost("listReports", { token: sess.token });
   reports = (data.reports || []).map(r => ({
     ...r,
@@ -662,16 +776,11 @@ async function refreshFromServer() {
     lng: Number(r.lng),
     photos: r.photos || []
   }));
-
   saveLocal();
   renderAll();
 }
 
-function saveLocal() {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(reports));
-  }
-
-  function getById(id) { return reports.find(r => r.id === id); }
+function getById(id) { return reports.find(r => r.id === id); }
 
   function reportMatchesQuery(r, q) {
     if (!q) return true;
@@ -686,10 +795,10 @@ function saveLocal() {
   // =========================
   // ICON / MARKERS
   // =========================
-  function createWorkIcon(color, interventionType) {
+  function createWorkIcon(color, interventionType, done) {
     const g = "g_" + Math.random().toString(36).slice(2);
     return L.divIcon({
-      className: "work-marker",
+      className: "work-marker" + (done ? " work-marker-done" : ""),
       html: `
         <svg width="44" height="44" viewBox="0 0 64 64" aria-hidden="true">
           <defs>
@@ -718,7 +827,7 @@ function saveLocal() {
 
   function addOrUpdateMarker(r) {
     let m = markers.get(r.id);
-    const icon = createWorkIcon(getSectorColor(r.secteur), r.interventionType, r.interventionType);
+    const icon = createWorkIcon(getSectorColor(r.secteur), r.interventionType);
     if (!m) {
       m = L.marker([r.lat, r.lng], { icon }).addTo(map);
       m.on("click", () => {
@@ -743,7 +852,7 @@ function saveLocal() {
   function renderMarkers() {
     for (const m of markers.values()) map.removeLayer(m);
     markers.clear();
-    for (const r of reports) addOrUpdateMarker(r);
+    for (const r of reports.filter(r => canSeeReport(r))) addOrUpdateMarker(r);
   }
 
   // =========================
@@ -993,6 +1102,8 @@ ${firstPhoto ? `<img src="${getPhotoSrc(firstPhoto)}" alt="Photo">` : ""}
     selectedId = id;
     const r = id ? getById(id) : null;
 
+    if (r && !canSeeReport(r)) { alert("Accès interdit à ce secteur."); return; }
+
     if (!r) {
       editorTitle().textContent = "Ajouter un signalement";
       editorHint().textContent = "Clique sur la carte pour choisir l’emplacement, puis complète la fiche.";
@@ -1041,8 +1152,9 @@ ${firstPhoto ? `<img src="${getPhotoSrc(firstPhoto)}" alt="Photo">` : ""}
 
     if (!list || !count) return;
 
-    const filtered = reports.filter(r => reportMatchesQuery(r, q));
-    count.textContent = `${filtered.length} / ${reports.length}`;
+    const visible = reports.filter(r => canSeeReport(r));
+    const filtered = visible.filter(r => reportMatchesQuery(r, q));
+    count.textContent = `${filtered.length} / ${visible.length}`;
     list.innerHTML = "";
 
     if (filtered.length === 0) {
@@ -1101,6 +1213,16 @@ ${firstPhoto ? `<img src="${getPhotoSrc(firstPhoto)}" alt="Photo">` : ""}
 
     highlightSelection();
   }
+
+  function renderAll() {
+    renderMarkers();
+    renderList();
+    if (selectedId) renderPreview(getById(selectedId) || null);
+    else renderPreview(null);
+    highlightSelection();
+    buildSectorLegend();
+  }
+
 
   // =========================
   // MAP
@@ -1317,8 +1439,15 @@ function handleMapSelect(e) {
         updatePhotoStatus();
         persistAndRefresh(obj.id);
 
-        // Optionnel: sync
-        await syncToSheets(obj);
+        // Sync serveur (Apps Script)
+        try {
+          const sess = loadSession();
+          if (apiEnabled() && sess) {
+            await apiPost("saveReport", { token: sess.token, reportJson: JSON.stringify(obj) });
+          }
+        } catch (e) {
+          console.warn("Sync serveur échouée", e);
+        }
 
       } catch (e) {
         alert(e.message || String(e));
@@ -1327,7 +1456,45 @@ function handleMapSelect(e) {
 
     newBtn().onclick = () => setSelected(null);
 
-    deleteBtn().onclick = () => deleteSelected().catch(e => alert(e.message));
+    deleteBtn().onclick = async () => {
+  if (!selectedId) return;
+
+  if (!isAdmin()) {
+    alert("Suppression réservée aux administrateurs.");
+    return;
+  }
+
+  if (!confirm("Supprimer ce signalement ?")) return;
+
+  const id = selectedId;
+  const r = getById(id);
+  if (!r) return;
+
+  // suppression locale + undo
+  reports = reports.filter(x => x.id !== id);
+  removeMarker(id);
+  selectedId = null;
+  persistAndRefresh(null);
+  setSelected(null);
+
+  // prépare undo (10s)
+  if (lastDeleted?.timeoutId) clearTimeout(lastDeleted.timeoutId);
+  lastDeleted = {
+    report: r,
+    timeoutId: setTimeout(() => { lastDeleted = null; hideUndoBar(); }, 10000)
+  };
+  showUndoBar("Signalement supprimé. Annuler ?");
+
+  // suppression serveur (logique)
+  try {
+    const sess = loadSession();
+    if (apiEnabled() && sess) {
+      await apiPost("deleteReport", { token: sess.token, id });
+    }
+  } catch (e) {
+    console.warn("Suppression serveur échouée", e);
+  }
+};
 
     // Preview open
     openInNewTabBtn().onclick = openInNewTab;
@@ -1359,6 +1526,8 @@ function handleMapSelect(e) {
     agentModeBtn().onclick = () => {
       document.body.classList.toggle("agent-mode");
     };
+  }
+
   // =========================
   // INIT
   // =========================
@@ -1463,10 +1632,6 @@ ${r.lat.toFixed(6)}, ${r.lng.toFixed(6)}
     pdf.save(`signalement-${r.dossierNumber || r.id}.pdf`);
   }
 
-    }
-
-    pdf.save(`signalement-${r.id}.pdf`);
-  }
 
 
   function printFiche() {
@@ -1509,6 +1674,26 @@ ${r.lat.toFixed(6)}, ${r.lng.toFixed(6)}
 window.sendByEmail = sendByEmail;
   window.printFiche = printFiche;
   window.exportPDF = exportPDF;
+  window.undoDelete = undoDelete;
 
-  window.addEventListener("load", async () => { populateLoginSecteurs(); const sess = loadSession(); if (sess) { currentUser = sess.user; try { await refreshFromServer(); } catch(e) { console.warn(e); } } else { const lm = document.getElementById("loginModal"); if (lm) lm.style.display="flex"; } init(); });
+  window.addEventListener("load", async () => {
+    populateLoginSecteurs();
+
+    const sess = loadSession();
+    if (sess) {
+      currentUser = sess.user;
+      try { await refreshFromServer(); } catch(e) { console.warn(e); }
+    } else {
+      const lm = document.getElementById("loginModal");
+      if (lm) lm.style.display = "flex";
+    }
+
+    init();
+
+    // Connexion (modal)
+    const loginBtn = document.getElementById("loginBtn");
+    const loginOfflineBtn = document.getElementById("loginOfflineBtn");
+    if (loginBtn) loginBtn.onclick = () => loginViaGAS().catch(e => alert(e.message));
+    if (loginOfflineBtn) loginOfflineBtn.onclick = loginOfflineDemo;
+  });
 })();
