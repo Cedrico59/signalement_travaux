@@ -57,9 +57,7 @@
       background: rgba(0,0,0,.18);
     }
     /* Clignote uniquement la pastille rouge/verte (toujours) */
-.work-marker.blink-dot svg circle {
-  animation: blinkDot 0.8s infinite;
-}
+.work-marker.blink-dot svg circle.status-dot.blink { animation: blink 1s infinite; }
 
 @keyframes blinkDot {
   0%   { opacity: 1; }
