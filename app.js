@@ -813,42 +813,49 @@ function getById(id) { return reports.find(r => r.id === id); }
   // =========================
   function createWorkIcon(r) {
   const color = getSectorColor(r.secteur);
-  const interventionType = r.interventionType;
+  const interventionType = r.interventionType || "interne";
   const done = !!r.done;
   const blink = !!r.blink;
 
-    return L.divIcon({
-  className: "work-marker"
-    + (done ? " work-marker-done" : "")
-    + (blink ? " blink-dot" : ""),
- 
+  // ✅ IMPORTANT : on garde "g" pour le dégradé SVG
+  const g = "g_" + Math.random().toString(36).slice(2);
 
+  return L.divIcon({
+    className:
+      "work-marker" +
+      (done ? " work-marker-done" : "") +
+      (blink ? " blink-dot" : ""),
+    html: `
+      <svg width="44" height="44" viewBox="0 0 64 64" aria-hidden="true">
+        <defs>
+          <radialGradient id="${g}" cx="50%" cy="35%" r="60%">
+            <stop offset="0%" stop-color="#cfe6ff"/>
+            <stop offset="100%" stop-color="${color}"/>
+          </radialGradient>
+        </defs>
 
-      html: `
-        <svg width="44" height="44" viewBox="0 0 64 64" aria-hidden="true">
-          <defs>
-            <radialGradient id="${g}" cx="50%" cy="35%" r="60%">
-              <stop offset="0%" stop-color="#cfe6ff"/>
-              <stop offset="100%" stop-color="${color}"/>
-            </radialGradient>
-          </defs>
+        <!-- pastille principale -->
+        <circle cx="32" cy="28" r="18" fill="url(#${g})"/>
 
-          <!-- pastille -->
-          <circle cx="32" cy="28" r="18" fill="url(#${g})"/>
-          <!-- pictogramme clé/outil -->
-          <path d="M40.5 24.2a8.3 8.3 0 0 1-10.8 7.9l-8.7 8.7a2.2 2.2 0 0 1-3.1 0l-1.7-1.7a2.2 2.2 0 0 1 0-3.1l8.7-8.7a8.3 8.3 0 1 1 15.6-4.1zm-5 0a3.3 3.3 0 1 0-6.6 0a3.3 3.3 0 0 0 6.6 0z"
-                fill="rgba(0,0,0,.65)"/>
-          <!-- tige -->
-          <path d="M32 46c-6 0-11 4-11 8h22c0-4-5-8-11-8z" fill="rgba(0,0,0,.35)"/>
-        
-          <circle cx="44" cy="14" r="6" fill="${getInterventionDotColor(interventionType)}" stroke="white" stroke-width="2"/>
-        </svg>
-      `,
-      iconSize: [44,44],
-      iconAnchor: [22,42],
-      popupAnchor: [0,-36]
-    });
-  }
+        <!-- pictogramme outil -->
+        <path d="M40.5 24.2a8.3 8.3 0 0 1-10.8 7.9l-8.7 8.7a2.2 2.2 0 0 1-3.1 0l-1.7-1.7a2.2 2.2 0 0 1 0-3.1l8.7-8.7a8.3 8.3 0 1 1 15.6-4.1zm-5 0a3.3 3.3 0 1 0-6.6 0a3.3 3.3 0 0 0 6.6 0z"
+          fill="rgba(0,0,0,.65)"/>
+
+        <!-- tige -->
+        <path d="M32 46c-6 0-11 4-11 8h22c0-4-5-8-11-8z" fill="rgba(0,0,0,.35)"/>
+
+        <!-- ✅ Pastille rouge/verte -->
+        <circle cx="44" cy="14" r="6"
+          fill="${getInterventionDotColor(interventionType)}"
+          stroke="white" stroke-width="2"/>
+      </svg>
+    `,
+    iconSize: [44, 44],
+    iconAnchor: [22, 42],
+    popupAnchor: [0, -36],
+  });
+}
+
 
   function addOrUpdateMarker(r) {
     let m = markers.get(r.id);
