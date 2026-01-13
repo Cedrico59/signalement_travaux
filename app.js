@@ -811,10 +811,19 @@ function getById(id) { return reports.find(r => r.id === id); }
   // =========================
   // ICON / MARKERS
   // =========================
-  function createWorkIcon(color, interventionType, done) {
-    const g = "g_" + Math.random().toString(36).slice(2);
+  function createWorkIcon(r) {
+  const color = getSectorColor(r.secteur);
+  const interventionType = r.interventionType;
+  const done = !!r.done;
+  const blink = !!r.blink;
+
     return L.divIcon({
-      className: "work-marker" + (done ? " work-marker-done" : ""),
+  className: "work-marker"
+    + (done ? " work-marker-done" : "")
+    + (blink ? " blink-dot" : ""),
+ 
+
+
       html: `
         <svg width="44" height="44" viewBox="0 0 64 64" aria-hidden="true">
           <defs>
@@ -843,7 +852,8 @@ function getById(id) { return reports.find(r => r.id === id); }
 
   function addOrUpdateMarker(r) {
     let m = markers.get(r.id);
-    const icon = createWorkIcon(getSectorColor(r.secteur), r.interventionType);
+    const icon = createWorkIcon(r);
+
     if (!m) {
       m = L.marker([r.lat, r.lng], { icon }).addTo(map);
       m.on("click", () => {
@@ -1045,21 +1055,38 @@ function getById(id) { return reports.find(r => r.id === id); }
     renderPhotoCarousel(r.photos || []);
   }
 
-  async function toggleDone(id) {
-    const r = getById(id);
-    if (!r) return;
-    r.done = !r.done;
-    saveLocal();
-    renderAll();
-    try {
-      const sess = loadSession();
-      if (apiEnabled() && sess) {
-        await apiPost("saveReport", { token: sess.token, reportJson: JSON.stringify(r) });
-      }
-    } catch (e) {
-      console.warn("Sync done échouée", e);
-    }
+ async function toggleDone(id) {
+  const r = getById(id);
+  if (!r) return;
+
+  // toggle done
+  r.done = !r.done;
+
+  // ✅ règle demandée :
+  // blink UNIQUEMENT si admin valide "fait"
+  if (r.done && isAdmin()) {
+    r.blink = true;
   }
+
+  // si on repasse en "non fait", on coupe le blink
+  if (!r.done) {
+    r.blink = false;
+  }
+
+  saveLocal();
+  renderAll();
+
+  try {
+    const sess = loadSession();
+    if (apiEnabled() && sess) {
+      await apiPost("saveReport", { token: sess.token, reportJson: JSON.stringify(r) });
+      await refreshFromServer();
+    }
+  } catch (e) {
+    console.warn("Sync done échouée", e);
+  }
+}
+
 
   function openInNewTab() {
     if (!selectedId) return;
