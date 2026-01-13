@@ -1331,6 +1331,11 @@ function handleMapSelect(e) {
       throw new Error("Le signalement doit être situé à Marcq-en-Barœul.");
     }
 
+
+    // ✅ Validation : secteur obligatoire
+    if (!secteurEl().value) {
+      throw new Error("Secteur obligatoire");
+    }
     const base = existing || {};
     const photos = [
       ...(base.photos || []),
@@ -1446,7 +1451,11 @@ function handleMapSelect(e) {
 
         if (existing) {
           const idx = reports.findIndex(x => x.id === existing.id);
-          reports[idx] = obj;
+          if (idx >= 0) {
+            reports[idx] = obj;
+          } else {
+            reports.push(obj);
+          }
         } else {
           reports.push(obj);
         }
@@ -1460,6 +1469,8 @@ function handleMapSelect(e) {
           const sess = loadSession();
           if (apiEnabled() && sess) {
             await apiPost("saveReport", { token: sess.token, reportJson: JSON.stringify(obj) });
+            // ✅ Re-synchronisation depuis le serveur (source de vérité)
+            await refreshFromServer();
           }
         } catch (e) {
           console.warn("Sync serveur échouée", e);
