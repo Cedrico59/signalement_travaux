@@ -805,8 +805,9 @@ async function refreshFromServer() {
 
     return {
       ...r,
-      lat: toNumberSafe(r.lat),
-      lng: toNumberSafe(r.lng),
+      lat: parseFloat(String(r.lat).replace(",", ".")),
+      lng: parseFloat(String(r.lng).replace(",", ".")),
+
       done: (r.done === true || String(r.done) === "true"),
       blink: (r.blink === true || String(r.blink) === "true"),
       photos
@@ -1378,8 +1379,9 @@ function handleMapSelect(e) {
   // SAVE / DELETE
   // =========================
   async function buildFromForm(existing=null) {
-    const lat = parseFloat(latEl().value);
-    const lng = parseFloat(lngEl().value);
+    const lat = parseFloat(String(latEl().value).replace(",", "."));
+const lng = parseFloat(String(lngEl().value).replace(",", "."));
+
     if (!Number.isFinite(lat) || !Number.isFinite(lng)) throw new Error("Coordonnées invalides (clique sur la carte ou GPS).");
 
     if (!isInMarcq(lat, lng)) {
