@@ -793,31 +793,13 @@ async function refreshFromServer() {
   if (!apiEnabled()) { renderAll(); return; }
   const sess = loadSession();
   if (!sess) { renderAll(); return; }
-
   const data = await apiPost("listReports", { token: sess.token });
-
-  reports = (data.reports || []).map(r => {
-    let photos = [];
-    try {
-      if (Array.isArray(r.photos)) photos = r.photos;
-      else if (typeof r.photosJson === "string") photos = JSON.parse(r.photosJson || "[]");
-    } catch { photos = []; }
-
-    return {
-      ...r,
-      lat: toNumberSafe(r.lat),
-      lng: toNumberSafe(r.lng),
-      done: (r.done === true || String(r.done) === "true"),
-      blink: (r.blink === true || String(r.blink) === "true"),
-      photos
-    };
-  });
-
-  const bad = reports.filter(r => !Number.isFinite(r.lat) || !Number.isFinite(r.lng));
-  if (bad.length) console.warn("⚠️ Reports ignorés (coords invalides)", bad);
-
-  reports = reports.filter(r => Number.isFinite(r.lat) && Number.isFinite(r.lng));
-
+  reports = (data.reports || []).map(r => ({
+    ...r,
+    lat: Number(r.lat),
+    lng: Number(r.lng),
+    photos: r.photos || []
+  }));
   saveLocal();
   renderAll();
 }
@@ -838,76 +820,62 @@ function getById(id) { return reports.find(r => r.id === id); }
   // ICON / MARKERS
   // =========================
   function createWorkIcon(color, interventionType, done, blink) {
-  const g = "g_" + Math.random().toString(36).slice(2);
+    const g = "g_" + Math.random().toString(36).slice(2);
+    return L.divIcon({
+      className: "work-marker" + (done ? " work-marker-done" : "") + (blink ? " blink-dot" : ""),
+      html: `
+        <svg width="44" height="44" viewBox="0 0 64 64" aria-hidden="true">
+          <defs>
+            <radialGradient id="${g}" cx="50%" cy="35%" r="60%">
+              <stop offset="0%" stop-color="#cfe6ff"/>
+              <stop offset="100%" stop-color="${color}"/>
+            </radialGradient>
+          </defs>
 
-  return L.divIcon({
-    className:
-      "work-marker" +
-      (done ? " work-marker-done" : "") +
-      (blink ? " blink-dot" : ""),
+          <!-- rond principal (couleur secteur) -->
+          <circle cx="32" cy="28" r="18" fill="url(#${g})"/>
 
-    html: `
-      <svg width="44" height="44" viewBox="0 0 64 64" aria-hidden="true">
-        <defs>
-          <radialGradient id="${g}" cx="50%" cy="35%" r="60%">
-            <stop offset="0%" stop-color="#cfe6ff"/>
-            <stop offset="100%" stop-color="${color}"/>
-          </radialGradient>
-        </defs>
+          <!-- pictogramme outil -->
+          <path d="M40.5 24.2a8.3 8.3 0 0 1-10.8 7.9l-8.7 8.7a2.2 2.2 0 0 1-3.1 0l-1.7-1.7a2.2 2.2 0 0 1 0-3.1l8.7-8.7a8.3 8.3 0 1 1 15.6-4.1zm-5 0a3.3 3.3 0 1 0-6.6 0a3.3 3.3 0 0 0 6.6 0z"
+            fill="rgba(0,0,0,.65)"/>
 
-        <!-- rond principal (couleur secteur) -->
-        <circle cx="32" cy="28" r="18" fill="url(#${g})"/>
+          <!-- base -->
+          <path d="M32 46c-6 0-11 4-11 8h22c0-4-5-8-11-8z" fill="rgba(0,0,0,.35)"/>
 
-        <!-- pictogramme outil -->
-        <path d="M40.5 24.2a8.3 8.3 0 0 1-10.8 7.9l-8.7 8.7a2.2 2.2 0 0 1-3.1 0l-1.7-1.7a2.2 2.2 0 0 1 0-3.1l8.7-8.7a8.3 8.3 0 1 1 15.6-4.1zm-5 0a3.3 3.3 0 1 0-6.6 0a3.3 3.3 0 0 0 6.6 0z"
-          fill="rgba(0,0,0,.65)"/>
+          <!-- pastille rouge/verte -->
+          <circle cx="44" cy="14" r="6"
+            fill="${getInterventionDotColor(interventionType)}"
+            stroke="white" stroke-width="2"/>
 
-        <!-- base -->
-        <path d="M32 46c-6 0-11 4-11 8h22c0-4-5-8-11-8z" fill="rgba(0,0,0,.35)"/>
-
-        <!-- pastille rouge/verte -->
-        <circle cx="44" cy="14" r="6"
-          fill="${getInterventionDotColor(interventionType)}"
-          stroke="white" stroke-width="2"/>
-      </svg>
-    `,
-    iconSize: [44, 44],
-    iconAnchor: [22, 42],
-    popupAnchor: [0, -36]
-  });
-}
-
-
-
-
- function addOrUpdateMarker(r) {
-  const lat = toNumberSafe(r.lat);
-  const lng = toNumberSafe(r.lng);
-
-  if (!Number.isFinite(lat) || !Number.isFinite(lng)) return;
-
-  let m = markers.get(r.id);
-
-  const icon = createWorkIcon(
-    getSectorColor(r.secteur),              // ✅ couleur par secteur
-    r.interventionType || "interne",        // ✅ pastille rouge/verte
-    !!r.done,                               // ✅ optionnel
-    !!r.blink                               // ✅ clignote si true
-  );
-
-  if (!m) {
-    m = L.marker([lat, lng], { icon }).addTo(map);
-    m.on("click", () => {
-      setSelected(r.id);
-      highlightSelection();
+          ${done ? `
+            <!-- CROIX BLANCHE (travaux effectués) -->
+            <path d="M24 22 L40 38" stroke="#fff" stroke-width="5" stroke-linecap="round"/>
+            <path d="M40 22 L24 38" stroke="#fff" stroke-width="5" stroke-linecap="round"/>
+          ` : ``}
+        </svg>
+      `,
+      iconSize: [44, 44],
+      iconAnchor: [22, 42],
+      popupAnchor: [0, -36]
     });
-    markers.set(r.id, m);
-  } else {
-    m.setLatLng([lat, lng]);
-    m.setIcon(icon);
   }
-}
 
+  function addOrUpdateMarker(r) {
+    let m = markers.get(r.id);
+    const icon = createWorkIcon(getSectorColor(r.secteur), r.interventionType || 'interne', !!r.done, !!r.blink);
+
+    if (!m) {
+      m = L.marker([lat, lng], { icon }).addTo(map);
+      m.on("click", () => {
+        setSelected(r.id);
+        highlightSelection();
+      });
+      markers.set(r.id, m);
+    } else {
+      m.setLatLng([r.lat, r.lng]);
+      m.setIcon(icon);
+    }
+  }
 
   function removeMarker(id) {
     const m = markers.get(id);
@@ -969,8 +937,8 @@ function getById(id) { return reports.find(r => r.id === id); }
 
   async function readFilesAsDataUrls(files) {
     const out = [];
-    const lat = parseFloat(String(latEl().value).replace(",", "."));
-    const lng = parseFloat(String(lngEl().value).replace(",", "."));
+    const lat = parseFloat(latEl().value);
+    const lng = parseFloat(lngEl().value);
 
     for (const f of files) {
       const stampedDataUrl = await stampPhotoWithMeta(f, lat, lng);
@@ -1098,28 +1066,21 @@ function getById(id) { return reports.find(r => r.id === id); }
   }
 
  async function toggleDone(id) {
-  const r = getById(id);
-  if (!r) return;
-
-  r.done = !r.done;
-
-  // ✅ règle demandée :
-  // - si ADMIN change l'état -> pastille (rouge/verte) CLIGNOTE en permanence (visible par tous)
-  // - si RESPONSABLE DE SECTEUR change l'état -> pastille FIXE
-  r.blink = isAdmin() ? true : false;
-
-  saveLocal();
-  renderAll();
-
-  try {
-    const sess = loadSession();
-    if (apiEnabled() && sess) {
-      await apiPost("saveReport", { token: sess.token, reportJson: JSON.stringify(r) });
-      await refreshFromServer();
+    const r = getById(id);
+    if (!r) return;
+    r.done = !r.done; // ✅ croix blanche uniquement
+    saveLocal();
+    renderAll();
+    try {
+      const sess = loadSession();
+      if (apiEnabled() && sess) {
+        await apiPost('saveReport', { token: sess.token, reportJson: JSON.stringify(r) });
+        await refreshFromServer();
+      }
+    } catch (e) {
+      console.warn('Sync done échouée', e);
     }
-  } catch (e) {
-    console.warn("Sync done échouée", e);
-  }
+
 }
 
 
@@ -1500,6 +1461,37 @@ function handleMapSelect(e) {
     const rightBtn = photoCarousel()?.querySelector(".carousel-btn.right");
     if (leftBtn) leftBtn.addEventListener("click", carouselPrev);
     if (rightBtn) rightBtn.addEventListener("click", carouselNext);
+
+
+    // ✅ ADMIN : si changement interne/externe => pastille clignote (persistant, visible par tous)
+    const interventionSel = document.getElementById("interventionType");
+    if (interventionSel) {
+      interventionSel.addEventListener("change", async () => {
+        if (!selectedId) return;
+        const r = getById(selectedId);
+        if (!r) return;
+
+        r.interventionType = interventionSel.value;
+
+        // uniquement admin déclenche le clignotement
+        if (isAdmin()) r.blink = true;
+
+        saveLocal();
+        renderAll();
+
+        // autosave immédiat
+        try {
+          const sess = loadSession();
+          if (apiEnabled() && sess) {
+            await apiPost("saveReport", { token: sess.token, reportJson: JSON.stringify(r) });
+            await refreshFromServer();
+            setSelected(r.id);
+          }
+        } catch (e) {
+          console.warn("Sync interventionType échouée", e);
+        }
+      });
+    }
 
     // GPS
     gpsBtn().onclick = locateUserGPS;
