@@ -56,8 +56,8 @@
       padding:10px; border-radius:12px; border:1px solid var(--line);
       background: rgba(0,0,0,.18);
     }
-    /* Clignote uniquement la pastille rouge/verte (toujours) */
-.work-marker.blink-dot svg circle {
+/* clignote uniquement la petite pastille rouge/verte */
+.work-marker.blink-dot svg circle:nth-of-type(2) {
   animation: blinkDot 0.8s infinite;
 }
 
@@ -66,6 +66,7 @@
   50%  { opacity: 0.25; }
   100% { opacity: 1; }
 }
+
 
     .item b { font-size:13px; }
     .item small { color: var(--muted); display:block; margin-top:2px; }
