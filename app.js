@@ -1080,7 +1080,7 @@ function getById(id) { return reports.find(r => r.id === id); }
     } catch (e) {
       console.warn('Sync done échouée', e);
     }
-
+  
 }
 
 
