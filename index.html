@@ -57,7 +57,9 @@
       background: rgba(0,0,0,.18);
     }
     /* Clignote uniquement la pastille rouge/verte (toujours) */
-.work-marker.blink-dot svg circle.status-dot.blink { animation: blink 1s infinite; }
+.work-marker.blink-dot svg circle {
+  animation: blinkDot 0.8s infinite;
+}
 
 @keyframes blinkDot {
   0%   { opacity: 1; }
@@ -132,7 +134,19 @@
       background: rgba(0,0,0,.3); color: var(--text);
     }
     #loginError { color: var(--danger); font-size: 13px; min-height: 18px; }
-  </style>
+  
+/* Blink uniquement si report.blink=true */
+@keyframes pulseBlink {
+  0%   { transform: scale(1); opacity: 1; }
+  50%  { transform: scale(1.25); opacity: 0.25; }
+  100% { transform: scale(1); opacity: 1; }
+}
+.marker-dot.blink {
+  animation: pulseBlink 1s infinite;
+  transform-origin: center;
+}
+
+</style>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 </head>
 
@@ -338,6 +352,7 @@ background:#0b1020;position:sticky;top:0;z-index:1000;">
         <button id="saveBtn" type="button">Enregistrer</button>
         <button id="newBtn" class="secondary" type="button">Nouveau</button>
         <button id="deleteBtn" class="danger" type="button" disabled>Supprimer</button>
+        <button id="doneBtn" class="secondary" type="button" disabled>Travaux effectué</button>
       </div>
 
       <p class="hint" style="margin-top:10px;">
@@ -403,6 +418,18 @@ font-size:13px;z-index:999;">
 #legend .lg{display:inline-block;width:12px;height:12px;border-radius:3px;margin-right:6px}
 #legend .dot{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:6px}
 .hidden{display:none}
+
+/* Blink uniquement si report.blink=true */
+@keyframes pulseBlink {
+  0%   { transform: scale(1); opacity: 1; }
+  50%  { transform: scale(1.25); opacity: 0.25; }
+  100% { transform: scale(1); opacity: 1; }
+}
+.marker-dot.blink {
+  animation: pulseBlink 1s infinite;
+  transform-origin: center;
+}
+
 </style>
 
 
@@ -416,6 +443,18 @@ transition:opacity .3s;">
 </div>
 <style>
 #undoBar.show{opacity:1;pointer-events:auto}
+
+/* Blink uniquement si report.blink=true */
+@keyframes pulseBlink {
+  0%   { transform: scale(1); opacity: 1; }
+  50%  { transform: scale(1.25); opacity: 0.25; }
+  100% { transform: scale(1); opacity: 1; }
+}
+.marker-dot.blink {
+  animation: pulseBlink 1s infinite;
+  transform-origin: center;
+}
+
 </style>
 
 

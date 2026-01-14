@@ -11,7 +11,7 @@
   
   // 🌐 Google Apps Script WebApp (API)
   // Collez ici l'URL de la WebApp déployée (Apps Script).
-  const GAS_URL = "https://script.google.com/macros/s/AKfycbyiuSQAJACiUHcyq-Pol_7flD7VwN0IiZfaB8GC3EoeLbaRgX4_2jJoCO02VtfIdixR/exec"; // ex: "https://script.google.com/macros/s/XXXX/exec"
+  const GAS_URL = "https://script.google.com/macros/s/AKfycbyiuSQAJACiUHcyq-Pol_7flD7VwN0IiZfaB8GC3EoeLbaRgX4_2jJoCO02VtfIdixR/exec"; // <-- colle ici ton URL /exec
 
   const SECTEURS = ["Hautes Loges - Briqueterie", "Bourg", "Buisson - Delcencerie", "Mairie - Quesne", "Pont - Plouich - Clémenceau", "Cimetière Delcencerie", "Cimetière Pont", "Ferme aux Oies"];
 
@@ -637,6 +637,7 @@ async function undoDelete() {
   const saveBtn = () => el("saveBtn");
   const newBtn = () => el("newBtn");
   const deleteBtn = () => el("deleteBtn");
+const doneBtn = () => el("doneBtn");
   const exportBtn = () => el("exportBtn");
   const importBtn = () => el("importBtn");
   const importFile = () => el("importFile");
@@ -812,49 +813,39 @@ function getById(id) { return reports.find(r => r.id === id); }
   // ICON / MARKERS
   // =========================
   function createWorkIcon(r) {
-  const color = getSectorColor(r.secteur);
-  const interventionType = r.interventionType || "interne";
   const done = !!r.done;
-  const blink = !!r.blink;
+  const blink = !!r.blink; // clignotement persistant (stocké) visible par tous
 
-  // ✅ IMPORTANT : on garde "g" pour le dégradé SVG
-  const g = "g_" + Math.random().toString(36).slice(2);
+  // Pastille rouge (à faire) / verte (effectué)
+  const dotColor = done ? "#22c55e" : "#ef4444";
+  const dotClass = "marker-dot" + (blink ? " blink" : "");
+
+  // Petit badge I/E selon type d'intervention
+  const badge = (String(r.interventionType || "").toLowerCase().startsWith("ex") ? "E" : "I");
+
+  const html = `
+    <div class="marker-wrap">
+      <svg width="36" height="36" viewBox="0 0 36 36" aria-hidden="true">
+        <!-- pin simple -->
+        <path d="M18 2c6.6 0 12 5.4 12 12 0 8.6-10.2 19.5-11.6 21a0.6 0.6 0 0 1-0.8 0C16.2 33.5 6 22.6 6 14 6 7.4 11.4 2 18 2z"
+              fill="rgba(15,23,42,0.92)" stroke="rgba(255,255,255,0.18)" stroke-width="1"/>
+        <!-- badge -->
+        <circle cx="12" cy="12" r="6" fill="rgba(255,255,255,0.10)" stroke="rgba(255,255,255,0.15)" />
+        <text x="12" y="14" text-anchor="middle" font-size="9" fill="#e5e7eb" font-family="system-ui,Segoe UI,Roboto,Arial">${badge}</text>
+
+        <!-- pastille statut -->
+        <circle class="${dotClass}" cx="26" cy="10" r="5" fill="${dotColor}" stroke="rgba(0,0,0,0.35)" stroke-width="1"/>
+      </svg>
+    </div>`;
 
   return L.divIcon({
-    className:
-      "work-marker" +
-      (done ? " work-marker-done" : "") +
-      (blink ? " blink-dot" : ""),
-    html: `
-      <svg width="44" height="44" viewBox="0 0 64 64" aria-hidden="true">
-        <defs>
-          <radialGradient id="${g}" cx="50%" cy="35%" r="60%">
-            <stop offset="0%" stop-color="#cfe6ff"/>
-            <stop offset="100%" stop-color="${color}"/>
-          </radialGradient>
-        </defs>
-
-        <!-- pastille principale -->
-        <circle cx="32" cy="28" r="18" fill="url(#${g})"/>
-
-        <!-- pictogramme outil -->
-        <path d="M40.5 24.2a8.3 8.3 0 0 1-10.8 7.9l-8.7 8.7a2.2 2.2 0 0 1-3.1 0l-1.7-1.7a2.2 2.2 0 0 1 0-3.1l8.7-8.7a8.3 8.3 0 1 1 15.6-4.1zm-5 0a3.3 3.3 0 1 0-6.6 0a3.3 3.3 0 0 0 6.6 0z"
-          fill="rgba(0,0,0,.65)"/>
-
-        <!-- tige -->
-        <path d="M32 46c-6 0-11 4-11 8h22c0-4-5-8-11-8z" fill="rgba(0,0,0,.35)"/>
-
-        <!-- ✅ Pastille rouge/verte -->
-        <circle cx="44" cy="14" r="6"
-          fill="${getInterventionDotColor(interventionType)}"
-          stroke="white" stroke-width="2"/>
-      </svg>
-    `,
-    iconSize: [44, 44],
-    iconAnchor: [22, 42],
-    popupAnchor: [0, -36],
+    className: "work-marker",
+    html,
+    iconSize: [36, 36],
+    iconAnchor: [18, 34]
   });
 }
+
 
 
   function addOrUpdateMarker(r) {
@@ -1066,19 +1057,12 @@ function getById(id) { return reports.find(r => r.id === id); }
   const r = getById(id);
   if (!r) return;
 
-  // toggle done
   r.done = !r.done;
 
   // ✅ règle demandée :
-  // blink UNIQUEMENT si admin valide "fait"
-  if (r.done && isAdmin()) {
-    r.blink = true;
-  }
-
-  // si on repasse en "non fait", on coupe le blink
-  if (!r.done) {
-    r.blink = false;
-  }
+  // - si ADMIN change l'état -> pastille (rouge/verte) CLIGNOTE en permanence (visible par tous)
+  // - si RESPONSABLE DE SECTEUR change l'état -> pastille FIXE
+  r.blink = isAdmin() ? true : false;
 
   saveLocal();
   renderAll();
@@ -1093,6 +1077,7 @@ function getById(id) { return reports.find(r => r.id === id); }
     console.warn("Sync done échouée", e);
   }
 }
+
 
 
   function openInNewTab() {
@@ -1158,6 +1143,7 @@ ${firstPhoto ? `<img src="${getPhotoSrc(firstPhoto)}" alt="Photo">` : ""}
       editorTitle().textContent = "Ajouter un signalement";
       editorHint().textContent = "Clique sur la carte pour choisir l’emplacement, puis complète la fiche.";
       deleteBtn().disabled = true;
+  if (doneBtn) doneBtn().disabled = true;
       ridEl().value = "";
       clearForm(false);
       renderPreview(null);
@@ -1167,6 +1153,7 @@ ${firstPhoto ? `<img src="${getPhotoSrc(firstPhoto)}" alt="Photo">` : ""}
     editorTitle().textContent = "Fiche signalement";
     editorHint().textContent = "Modifie les infos puis clique sur Enregistrer.";
     deleteBtn().disabled = false;
+  if (doneBtn) doneBtn().disabled = false;
 
     ridEl().value = r.id || "";
     const dn = document.getElementById('dossierNumber');
@@ -1300,6 +1287,7 @@ function handleMapSelect(e) {
 
       selectedId = null;
       deleteBtn().disabled = true;
+  if (doneBtn) doneBtn().disabled = true;
       editorTitle().textContent = "Ajouter un signalement";
       editorHint().textContent = "Complète la fiche puis clique sur Enregistrer.";
 
@@ -1335,6 +1323,7 @@ function handleMapSelect(e) {
 
         selectedId = null;
         deleteBtn().disabled = true;
+  if (doneBtn) doneBtn().disabled = true;
         editorTitle().textContent = "Ajouter un signalement (GPS)";
         editorHint().textContent = "Position GPS détectée automatiquement.";
 
