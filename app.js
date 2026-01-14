@@ -684,6 +684,13 @@ const doneBtn = () => el("doneBtn");
     return x.toFixed(6);
   }
 
+  // ✅ anti-NaN (virgules Sheets / valeurs texte)
+  function toNumberSafe(x) {
+    if (typeof x === "string") x = x.replace(",", ".").trim();
+    const n = Number(x);
+    return Number.isFinite(n) ? n : NaN;
+  }
+
   
   // 🎨 Couleurs secteurs (IDENTIQUES à Patrimoine arboré)
   const SECTOR_COLORS = {
@@ -786,13 +793,31 @@ async function refreshFromServer() {
   if (!apiEnabled()) { renderAll(); return; }
   const sess = loadSession();
   if (!sess) { renderAll(); return; }
+
   const data = await apiPost("listReports", { token: sess.token });
-  reports = (data.reports || []).map(r => ({
-    ...r,
-    lat: Number(r.lat),
-    lng: Number(r.lng),
-    photos: r.photos || []
-  }));
+
+  reports = (data.reports || []).map(r => {
+    let photos = [];
+    try {
+      if (Array.isArray(r.photos)) photos = r.photos;
+      else if (typeof r.photosJson === "string") photos = JSON.parse(r.photosJson || "[]");
+    } catch { photos = []; }
+
+    return {
+      ...r,
+      lat: toNumberSafe(r.lat),
+      lng: toNumberSafe(r.lng),
+      done: (r.done === true || String(r.done) === "true"),
+      blink: (r.blink === true || String(r.blink) === "true"),
+      photos
+    };
+  });
+
+  const bad = reports.filter(r => !Number.isFinite(r.lat) || !Number.isFinite(r.lng));
+  if (bad.length) console.warn("⚠️ Reports ignorés (coords invalides)", bad);
+
+  reports = reports.filter(r => Number.isFinite(r.lat) && Number.isFinite(r.lng));
+
   saveLocal();
   renderAll();
 }
@@ -849,18 +874,25 @@ function getById(id) { return reports.find(r => r.id === id); }
 
 
   function addOrUpdateMarker(r) {
+    const lat = toNumberSafe(r.lat);
+    const lng = toNumberSafe(r.lng);
+    if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
+      console.warn("⛔ Marker ignoré (coords invalides)", r.id, r.lat, r.lng);
+      return;
+    }
+
     let m = markers.get(r.id);
     const icon = createWorkIcon(r);
 
     if (!m) {
-      m = L.marker([r.lat, r.lng], { icon }).addTo(map);
+      m = L.marker([lat, lng], { icon }).addTo(map);
       m.on("click", () => {
         setSelected(r.id);
         highlightSelection();
       });
       markers.set(r.id, m);
     } else {
-      m.setLatLng([r.lat, r.lng]);
+      m.setLatLng([lat, lng]);
       m.setIcon(icon);
     }
   }
