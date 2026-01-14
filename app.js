@@ -684,13 +684,6 @@ const doneBtn = () => el("doneBtn");
     return x.toFixed(6);
   }
 
-  // ✅ anti-NaN (virgules Sheets / valeurs texte)
-  function toNumberSafe(x) {
-    if (typeof x === "string") x = x.replace(",", ".").trim();
-    const n = Number(x);
-    return Number.isFinite(n) ? n : NaN;
-  }
-
   
   // 🎨 Couleurs secteurs (IDENTIQUES à Patrimoine arboré)
   const SECTOR_COLORS = {
@@ -819,53 +812,54 @@ function getById(id) { return reports.find(r => r.id === id); }
   // =========================
   // ICON / MARKERS
   // =========================
-  function createWorkIcon(color, interventionType, done, blink) {
-    const g = "g_" + Math.random().toString(36).slice(2);
-    return L.divIcon({
-      className: "work-marker" + (done ? " work-marker-done" : "") + (blink ? " blink-dot" : ""),
-      html: `
-        <svg width="44" height="44" viewBox="0 0 64 64" aria-hidden="true">
-          <defs>
-            <radialGradient id="${g}" cx="50%" cy="35%" r="60%">
-              <stop offset="0%" stop-color="#cfe6ff"/>
-              <stop offset="100%" stop-color="${color}"/>
-            </radialGradient>
-          </defs>
+  function createWorkIcon(r) {
+  const done = !!r.done;
+  const blink = !!r.blink; // clignotement persistant (stocké) visible par tous
 
-          <!-- rond principal (couleur secteur) -->
-          <circle cx="32" cy="28" r="18" fill="url(#${g})"/>
+  // Pastille rouge (à faire) / verte (effectué)
+  const dotColor = done ? "#22c55e" : "#ef4444";
+  const dotClass = "marker-dot" + (blink ? " blink" : "");
 
-          <!-- pictogramme outil -->
-          <path d="M40.5 24.2a8.3 8.3 0 0 1-10.8 7.9l-8.7 8.7a2.2 2.2 0 0 1-3.1 0l-1.7-1.7a2.2 2.2 0 0 1 0-3.1l8.7-8.7a8.3 8.3 0 1 1 15.6-4.1zm-5 0a3.3 3.3 0 1 0-6.6 0a3.3 3.3 0 0 0 6.6 0z"
-            fill="rgba(0,0,0,.65)"/>
+  // Petit badge I/E selon type d'intervention
+  const badge = (String(r.interventionType || "").toLowerCase().startsWith("ex") ? "E" : "I");
 
-          <!-- base -->
-          <path d="M32 46c-6 0-11 4-11 8h22c0-4-5-8-11-8z" fill="rgba(0,0,0,.35)"/>
+  const html = `
+    <div class="marker-wrap">
+      <svg width="36" height="36" viewBox="0 0 36 36" aria-hidden="true">
+        <!-- pin simple -->
+        <path d="M18 2c6.6 0 12 5.4 12 12 0 8.6-10.2 19.5-11.6 21a0.6 0.6 0 0 1-0.8 0C16.2 33.5 6 22.6 6 14 6 7.4 11.4 2 18 2z"
+              fill="rgba(15,23,42,0.92)" stroke="rgba(255,255,255,0.18)" stroke-width="1"/>
+        <!-- badge -->
+        <circle cx="12" cy="12" r="6" fill="rgba(255,255,255,0.10)" stroke="rgba(255,255,255,0.15)" />
+        <text x="12" y="14" text-anchor="middle" font-size="9" fill="#e5e7eb" font-family="system-ui,Segoe UI,Roboto,Arial">${badge}</text>
 
-          <!-- pastille rouge/verte -->
-          <circle cx="44" cy="14" r="6"
-            fill="${getInterventionDotColor(interventionType)}"
-            stroke="white" stroke-width="2"/>
+        <!-- pastille statut -->
+        <circle class="${dotClass}" cx="26" cy="10" r="5" fill="${dotColor}" stroke="rgba(0,0,0,0.35)" stroke-width="1"/>
+      </svg>
+    </div>`;
 
-          ${done ? `
-            <!-- CROIX BLANCHE (travaux effectués) -->
-            <path d="M24 22 L40 38" stroke="#fff" stroke-width="5" stroke-linecap="round"/>
-            <path d="M40 22 L24 38" stroke="#fff" stroke-width="5" stroke-linecap="round"/>
-          ` : ``}
-        </svg>
-      `,
-      iconSize: [44, 44],
-      iconAnchor: [22, 42],
-      popupAnchor: [0, -36]
-    });
-  }
+  return L.divIcon({
+    className: "work-marker",
+    html,
+    iconSize: [36, 36],
+    iconAnchor: [18, 34]
+  });
+}
+
+
 
   function addOrUpdateMarker(r) {
+    // ✅ sécurité: éviter LatLng null/NaN qui casse Leaflet et fait disparaître les markers
+    if (!r) return;
+    const lat = Number(r.lat);
+    const lng = Number(r.lng);
+    if (!isFinite(lat) || !isFinite(lng)) return;
+
     let m = markers.get(r.id);
-    const icon = createWorkIcon(getSectorColor(r.secteur), r.interventionType || 'interne', !!r.done, !!r.blink);
+    const icon = createWorkIcon(r);
 
     if (!m) {
-      m = L.marker([lat, lng], { icon }).addTo(map);
+      m = L.marker([r.lat, r.lng], { icon }).addTo(map);
       m.on("click", () => {
         setSelected(r.id);
         highlightSelection();
@@ -1066,21 +1060,28 @@ function getById(id) { return reports.find(r => r.id === id); }
   }
 
  async function toggleDone(id) {
-    const r = getById(id);
-    if (!r) return;
-    r.done = !r.done; // ✅ croix blanche uniquement
-    saveLocal();
-    renderAll();
-    try {
-      const sess = loadSession();
-      if (apiEnabled() && sess) {
-        await apiPost('saveReport', { token: sess.token, reportJson: JSON.stringify(r) });
-        await refreshFromServer();
-      }
-    } catch (e) {
-      console.warn('Sync done échouée', e);
+  const r = getById(id);
+  if (!r) return;
+
+  r.done = !r.done;
+
+  // ✅ règle demandée :
+  // - si ADMIN change l'état -> pastille (rouge/verte) CLIGNOTE en permanence (visible par tous)
+  // - si RESPONSABLE DE SECTEUR change l'état -> pastille FIXE
+  r.blink = isAdmin() ? true : false;
+
+  saveLocal();
+  renderAll();
+
+  try {
+    const sess = loadSession();
+    if (apiEnabled() && sess) {
+      await apiPost("saveReport", { token: sess.token, reportJson: JSON.stringify(r) });
+      await refreshFromServer();
     }
-  
+  } catch (e) {
+    console.warn("Sync done échouée", e);
+  }
 }
 
 
@@ -1461,37 +1462,6 @@ function handleMapSelect(e) {
     const rightBtn = photoCarousel()?.querySelector(".carousel-btn.right");
     if (leftBtn) leftBtn.addEventListener("click", carouselPrev);
     if (rightBtn) rightBtn.addEventListener("click", carouselNext);
-
-
-    // ✅ ADMIN : si changement interne/externe => pastille clignote (persistant, visible par tous)
-    const interventionSel = document.getElementById("interventionType");
-    if (interventionSel) {
-      interventionSel.addEventListener("change", async () => {
-        if (!selectedId) return;
-        const r = getById(selectedId);
-        if (!r) return;
-
-        r.interventionType = interventionSel.value;
-
-        // uniquement admin déclenche le clignotement
-        if (isAdmin()) r.blink = true;
-
-        saveLocal();
-        renderAll();
-
-        // autosave immédiat
-        try {
-          const sess = loadSession();
-          if (apiEnabled() && sess) {
-            await apiPost("saveReport", { token: sess.token, reportJson: JSON.stringify(r) });
-            await refreshFromServer();
-            setSelected(r.id);
-          }
-        } catch (e) {
-          console.warn("Sync interventionType échouée", e);
-        }
-      });
-    }
 
     // GPS
     gpsBtn().onclick = locateUserGPS;
