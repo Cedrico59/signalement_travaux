@@ -786,16 +786,25 @@ async function refreshFromServer() {
   if (!apiEnabled()) { renderAll(); return; }
   const sess = loadSession();
   if (!sess) { renderAll(); return; }
+
   const data = await apiPost("listReports", { token: sess.token });
-  reports = (data.reports || []).map(r => ({
-    ...r,
-    lat: Number(r.lat),
-    lng: Number(r.lng),
-    photos: r.photos || []
-  }));
+
+  // ✅ IMPORTANT : normalisation + sécurisation
+  reports = (data.reports || [])
+    .map(r => ({
+      ...r,
+      lat: Number(r.lat),
+      lng: Number(r.lng),
+      done: (r.done === true || String(r.done) === "true"),
+      blink: (r.blink === true || String(r.blink) === "true"),
+      photos: Array.isArray(r.photos) ? r.photos : (r.photosJson ? JSON.parse(r.photosJson || "[]") : [])
+    }))
+    .filter(r => Number.isFinite(r.lat) && Number.isFinite(r.lng)); // ✅ évite qu’un report cassé supprime tout
+
   saveLocal();
   renderAll();
 }
+
 
 function getById(id) { return reports.find(r => r.id === id); }
 
@@ -1468,41 +1477,48 @@ function handleMapSelect(e) {
 
     // Save
     saveBtn().onclick = async () => {
-      try {
-        const existing = selectedId ? getById(selectedId) : null;
-        const obj = await buildFromForm(existing);
+  try {
+    const existing = selectedId ? getById(selectedId) : null;
+    const obj = await buildFromForm(existing);
 
-        if (existing) {
-          const idx = reports.findIndex(x => x.id === existing.id);
-          if (idx >= 0) {
-            reports[idx] = obj;
-          } else {
-            reports.push(obj);
-          }
-        } else {
-          reports.push(obj);
-        }
+    // ✅ 1) On sauvegarde local DIRECT
+    if (existing) {
+      const idx = reports.findIndex(x => x.id === existing.id);
+      reports[idx] = obj;
+    } else {
+      reports.push(obj);
+    }
 
-        pendingPhotos = [];
-        updatePhotoStatus();
-        persistAndRefresh(obj.id);
+    pendingPhotos = [];
+    updatePhotoStatus();
+    persistAndRefresh(obj.id); // ✅ marker visible instant
 
-        // Sync serveur (Apps Script)
-        try {
-          const sess = loadSession();
-          if (apiEnabled() && sess) {
-            await apiPost("saveReport", { token: sess.token, reportJson: JSON.stringify(obj) });
-            // ✅ Re-synchronisation depuis le serveur (source de vérité)
-            await refreshFromServer();
-          }
-        } catch (e) {
-          console.warn("Sync serveur échouée", e);
-        }
+    // ✅ 2) Sync serveur
+    try {
+      const sess = loadSession();
+      if (apiEnabled() && sess) {
+        await apiPost("saveReport", {
+          token: sess.token,
+          reportJson: JSON.stringify(obj)
+        });
 
-      } catch (e) {
-        alert(e.message || String(e));
+        // ✅ 3) Après sync, on recharge serveur mais SANS casser l'affichage
+        await refreshFromServer();
+
+        // ✅ on revient sur l’élément sauvegardé
+        setSelected(obj.id);
       }
-    };
+    } catch (e) {
+      console.warn("Sync serveur échouée", e);
+      // ✅ le marker reste affiché car local ok
+      alert("Enregistré en local ✅ mais synchro serveur échouée ⚠️");
+    }
+
+  } catch (e) {
+    alert(e.message || String(e));
+  }
+};
+
 
     newBtn().onclick = () => setSelected(null);
 
