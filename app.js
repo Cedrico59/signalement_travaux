@@ -805,9 +805,8 @@ async function refreshFromServer() {
 
     return {
       ...r,
-      lat: parseFloat(String(r.lat).replace(",", ".")),
-      lng: parseFloat(String(r.lng).replace(",", ".")),
-
+      lat: toNumberSafe(r.lat),
+      lng: toNumberSafe(r.lng),
       done: (r.done === true || String(r.done) === "true"),
       blink: (r.blink === true || String(r.blink) === "true"),
       photos
@@ -884,7 +883,6 @@ function getById(id) { return reports.find(r => r.id === id); }
 
     let m = markers.get(r.id);
     const icon = createWorkIcon(r);
-
     if (!m) {
       m = L.marker([lat, lng], { icon }).addTo(map);
       m.on("click", () => {
@@ -958,8 +956,8 @@ function getById(id) { return reports.find(r => r.id === id); }
 
   async function readFilesAsDataUrls(files) {
     const out = [];
-    const lat = parseFloat(latEl().value);
-    const lng = parseFloat(lngEl().value);
+    const lat = parseFloat(String(latEl().value).replace(",", "."));
+    const lng = parseFloat(String(lngEl().value).replace(",", "."));
 
     for (const f of files) {
       const stampedDataUrl = await stampPhotoWithMeta(f, lat, lng);
@@ -1379,9 +1377,8 @@ function handleMapSelect(e) {
   // SAVE / DELETE
   // =========================
   async function buildFromForm(existing=null) {
-    const lat = parseFloat(String(latEl().value).replace(",", "."));
-const lng = parseFloat(String(lngEl().value).replace(",", "."));
-
+    const lat = parseFloat(latEl().value);
+    const lng = parseFloat(lngEl().value);
     if (!Number.isFinite(lat) || !Number.isFinite(lng)) throw new Error("Coordonnées invalides (clique sur la carte ou GPS).");
 
     if (!isInMarcq(lat, lng)) {
