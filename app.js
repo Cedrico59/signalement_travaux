@@ -1086,16 +1086,15 @@ function getById(id) { return reports.find(r => r.id === id); }
     renderPhotoCarousel(r.photos || []);
   }
 
- async function toggleDone(id) {
+async function toggleDone(id) {
   const r = getById(id);
   if (!r) return;
 
+  // ✅ On touche UNIQUEMENT au done (croix blanche)
   r.done = !r.done;
 
-  // ✅ règle demandée :
-  // - si ADMIN change l'état -> pastille (rouge/verte) CLIGNOTE en permanence (visible par tous)
-  // - si RESPONSABLE DE SECTEUR change l'état -> pastille FIXE
-  r.blink = isAdmin() ? true : false;
+  // ❌ IMPORTANT : ne jamais modifier blink ici
+  // r.blink = r.blink; (inutile)
 
   saveLocal();
   renderAll();
@@ -1104,12 +1103,13 @@ function getById(id) { return reports.find(r => r.id === id); }
     const sess = loadSession();
     if (apiEnabled() && sess) {
       await apiPost("saveReport", { token: sess.token, reportJson: JSON.stringify(r) });
-      await refreshFromServer();
+      await refreshFromServer(); // remet tout à jour proprement
     }
   } catch (e) {
     console.warn("Sync done échouée", e);
   }
 }
+
 
 
 
