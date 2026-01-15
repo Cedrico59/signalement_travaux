@@ -817,8 +817,29 @@ function getById(id) { return reports.find(r => r.id === id); }
   const blink = !!r.blink; // clignotement persistant (stocké) visible par tous
 
   // Pastille rouge (à faire) / verte (effectué)
+  // ✅ Couleur de marqueur par secteur (comme avant)
+  const sectorColors = {
+    "Hautes Loges - Briqueterie": "#3b82f6",
+    "Bourg": "#22c55e",
+    "Buisson - Delcencerie": "#f97316",
+    "Mairie - Quesne": "#a855f7",
+    "Pont - Plouich - Clémenceau": "#06b6d4",
+    "Cimetière Delcencerie": "#ef4444",
+    "Cimetière Pont": "#eab308",
+    "Ferme aux Oies": "#10b981"
+  };
+
+  const baseColor = sectorColors[String(r.secteur || "").trim()] || "#60a5fa";
+
+  // Pastille rouge (à faire) / verte (effectué)
   const dotColor = done ? "#22c55e" : "#ef4444";
+
+  // ✅ Clignotement UNIQUEMENT si admin a choisi Interne/Externe
+  // => on se base sur r.blink (stocké serveur) : true => blink, false => fixe
   const dotClass = "marker-dot" + (blink ? " blink" : "");
+
+  // ✅ Croix blanche si travaux effectués (bouton accessible à tous)
+  const showCross = !!r.done;
 
   // Petit badge I/E selon type d'intervention
   const badge = (String(r.interventionType || "").toLowerCase().startsWith("ex") ? "E" : "I");
@@ -826,15 +847,21 @@ function getById(id) { return reports.find(r => r.id === id); }
   const html = `
     <div class="marker-wrap">
       <svg width="36" height="36" viewBox="0 0 36 36" aria-hidden="true">
-        <!-- pin simple -->
+        <!-- pin coloré secteur -->
         <path d="M18 2c6.6 0 12 5.4 12 12 0 8.6-10.2 19.5-11.6 21a0.6 0.6 0 0 1-0.8 0C16.2 33.5 6 22.6 6 14 6 7.4 11.4 2 18 2z"
-              fill="rgba(15,23,42,0.92)" stroke="rgba(255,255,255,0.18)" stroke-width="1"/>
-        <!-- badge -->
-        <circle cx="12" cy="12" r="6" fill="rgba(255,255,255,0.10)" stroke="rgba(255,255,255,0.15)" />
-        <text x="12" y="14" text-anchor="middle" font-size="9" fill="#e5e7eb" font-family="system-ui,Segoe UI,Roboto,Arial">${badge}</text>
+              fill="${baseColor}" stroke="rgba(255,255,255,0.35)" stroke-width="1"/>
 
-        <!-- pastille statut -->
+        <!-- badge I/E -->
+        <circle cx="12" cy="12" r="6" fill="rgba(0,0,0,0.20)" stroke="rgba(255,255,255,0.25)" />
+        <text x="12" y="14" text-anchor="middle" font-size="9" fill="#ffffff" font-family="system-ui,Segoe UI,Roboto,Arial">${badge}</text>
+
+        <!-- pastille statut (rouge/vert) -->
         <circle class="${dotClass}" cx="26" cy="10" r="5" fill="${dotColor}" stroke="rgba(0,0,0,0.35)" stroke-width="1"/>
+
+        <!-- croix blanche (travaux effectués) -->
+        ${showCross ? `
+        <path d="M14 18 L22 26 M22 18 L14 26" stroke="#ffffff" stroke-width="3" stroke-linecap="round" />
+        ` : ""}
       </svg>
     </div>`;
 
