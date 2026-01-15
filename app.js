@@ -831,8 +831,12 @@ function getById(id) { return reports.find(r => r.id === id); }
 
   const baseColor = sectorColors[String(r.secteur || "").trim()] || "#60a5fa";
 
-  // Pastille rouge (à faire) / verte (effectué)
-  const dotColor = done ? "#22c55e" : "#ef4444";
+  // ✅ Pastille rouge/verte = uniquement selon interventionType
+// externe = rouge, interne = vert
+const dotColor = (String(r.interventionType || "").toLowerCase().startsWith("ex"))
+  ? "#ef4444"
+  : "#22c55e";
+
 
   // ✅ Clignotement UNIQUEMENT si admin a choisi Interne/Externe
   // => on se base sur r.blink (stocké serveur) : true => blink, false => fixe
