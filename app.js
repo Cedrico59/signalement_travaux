@@ -1670,6 +1670,16 @@ function wireUI() {
     renderList();
     setSelected(null);
   }
+function renderMarkers() {
+  // Nettoie tous les marqueurs affichés
+  for (const m of markers.values()) map.removeLayer(m);
+  markers.clear();
+
+  // Recrée uniquement ceux visibles
+  for (const r of reports.filter(r => canSeeReport(r))) {
+    addOrUpdateMarker(r);
+  }
+}
 
   
   function buildFicheText(r) {
