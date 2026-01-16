@@ -888,43 +888,31 @@ const dotColor = (String(r.interventionType || "").toLowerCase().startsWith("ex"
 
 
 
-  function addOrUpdateMarker(r) {
-    // ✅ sécurité: éviter LatLng null/NaN qui casse Leaflet et fait disparaître les markers
-    if (!r) return;
-    const lat = Number(r.lat);
-    const lng = Number(r.lng);
-    if (!isFinite(lat) || !isFinite(lng)) return;
+ function addOrUpdateMarker(r) {
+  // ✅ sécurité: éviter LatLng null/NaN qui casse Leaflet
+  if (!r) return;
+  const lat = Number(r.lat);
+  const lng = Number(r.lng);
+  if (!isFinite(lat) || !isFinite(lng)) return;
 
-    let m = markers.get(r.id);
-    const icon = createWorkIcon(r);
+  let m = markers.get(r.id);
+  const icon = createWorkIcon(r);
 
-    if (!m) {
-      m = if (!r || !isFinite(+r.lat) || !isFinite(+r.lng)) { return null; }
-  L.marker([+r.lat, +r.lng], { icon }).addTo(map);
-      m.on("click", () => {
-        setSelected(r.id);
-        highlightSelection();
-      });
-      markers.set(r.id, m);
-    } else {
-      m.setLatLng([r.lat, r.lng]);
-      m.setIcon(icon);
-    }
+  if (!m) {
+    m = L.marker([lat, lng], { icon }).addTo(map);
+
+    m.on("click", () => {
+      setSelected(r.id);
+      highlightSelection();
+    });
+
+    markers.set(r.id, m);
+  } else {
+    m.setLatLng([lat, lng]);
+    m.setIcon(icon);
   }
+}
 
-  function removeMarker(id) {
-    const m = markers.get(id);
-    if (m) {
-      map.removeLayer(m);
-      markers.delete(id);
-    }
-  }
-
-  function renderMarkers() {
-    for (const m of markers.values()) map.removeLayer(m);
-    markers.clear();
-    for (const r of reports.filter(r => canSeeReport(r))) addOrUpdateMarker(r);
-  }
 
   // =========================
   // PHOTOS: stamp date + GPS
