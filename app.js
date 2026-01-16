@@ -1,6 +1,16 @@
 (() => {
   "use strict";
 
+// =====================================================
+// ✅ SAFE NUMBERS (évite NaN / undefined)
+// =====================================================
+function toNum(v, fallback = 0) {
+  if (v === null || v === undefined) return fallback;
+  if (typeof v === "number" && Number.isFinite(v)) return v;
+  const n = Number(String(v).replace(",", ".").trim());
+  return Number.isFinite(n) ? n : fallback;
+}
+
   // =========================
   // CONFIG (optionnel synchro GAS)
   // =========================
