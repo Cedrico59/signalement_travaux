@@ -1,15 +1,14 @@
+
+function toNum(v){
+  if (v === null || v === undefined) return NaN;
+  if (typeof v === "number") return v;
+  const s = String(v).replace(",", ".").trim();
+  const n = Number(s);
+  return n;
+}
+
 (() => {
   "use strict";
-
-// =====================================================
-// ✅ SAFE NUMBERS (évite NaN / undefined)
-// =====================================================
-function toNum(v, fallback = 0) {
-  if (v === null || v === undefined) return fallback;
-  if (typeof v === "number" && Number.isFinite(v)) return v;
-  const n = Number(String(v).replace(",", ".").trim());
-  return Number.isFinite(n) ? n : fallback;
-}
 
   // =========================
   // CONFIG (optionnel synchro GAS)
@@ -80,18 +79,6 @@ async function apiPost(action, payload = {}) {
 // 🔐 Auth état
 let currentUser = null; // { role:'admin'|'secteur', secteur?: string }
 
-
-function updateHeaderSectorName() {
-  const elName = document.getElementById("currentSectorName");
-  if (!elName) return;
-  if (!currentUser) { elName.textContent = ""; return; }
-  if (currentUser.role === "admin") {
-    elName.textContent = "Administrateur";
-  } else {
-    elName.textContent = currentUser.secteur || "";
-  }
-}
-
 function isAdmin() { return currentUser && currentUser.role === "admin"; }
 function canSeeReport(r) {
   if (isAdmin()) return true;
@@ -128,7 +115,6 @@ async function loginViaGAS() {
   const modal = document.getElementById("loginModal");
   if (modal) modal.remove();
 
-  updateHeaderSectorName();
   await refreshFromServer();
 }
 
@@ -138,7 +124,6 @@ function loginOfflineDemo() {
   currentUser = (role === "admin") ? { role: "admin" } : { role: "secteur", secteur };
   const modal = document.getElementById("loginModal");
   if (modal) modal.remove();
-  updateHeaderSectorName();
   renderAll();
 }
 
@@ -623,7 +608,7 @@ async function undoDelete() {
   try {
     const sess = loadSession();
     if (apiEnabled() && sess) {
-      await apiPost("saveReport", { token: sess.token, reportJson: JSON.stringify(report) });
+      await apiPost("undeleteReport", { token: sess.token, id: lastDeleted.id });
     }
   } catch (e) {
     console.warn("Undo sync serveur échouée", e);
@@ -651,7 +636,6 @@ async function undoDelete() {
   const secteurEl = () => el("secteur");
   const addressEl = () => el("address");
   const dateDemandeEl = () => el("dateDemande");
-  const dateInterventionEl = () => el("dateIntervention");
   const dateExecutionEl = () => el("dateExecution");
   const natureEl = () => el("nature");
   const commentEl = () => el("comment");
@@ -839,68 +823,66 @@ function getById(id) { return reports.find(r => r.id === id); }
   // =========================
   function createWorkIcon(r) {
   const done = !!r.done;
-  const blink = !!r.blink;
+  const blink = !!r.blink; // clignotement persistant (stocké) visible par tous
 
-  // ✅ Couleur par secteur (comme avant)
+  // Pastille rouge (à faire) / verte (effectué)
+  // ✅ Couleur de marqueur par secteur (comme avant)
   const sectorColors = {
-    "Hautes Loges - Briqueterie": "#1565C0",
-    "Bourg": "#2E7D32",
-    "Buisson - Delcencerie": "#EF6C00",
-    "Mairie - Quesne": "#6A1B9A",
-    "Pont - Plouich - Clémenceau": "#00838F",
-    "Cimetière Delcencerie": "#4E342E",
-    "Cimetière Pont": "#C62828",
-    "Ferme aux Oies": "#546E7A"
+    "Hautes Loges - Briqueterie": "#3b82f6",
+    "Bourg": "#22c55e",
+    "Buisson - Delcencerie": "#f97316",
+    "Mairie - Quesne": "#a855f7",
+    "Pont - Plouich - Clémenceau": "#06b6d4",
+    "Cimetière Delcencerie": "#ef4444",
+    "Cimetière Pont": "#eab308",
+    "Ferme aux Oies": "#10b981"
   };
-  const baseColor = sectorColors[String(r.secteur || "").trim()] || "#607D8B";
 
-  // pastille rouge/verte selon done
-  const dotColor = done ? "#22c55e" : "#ef4444";
+  const baseColor = sectorColors[String(r.secteur || "").trim()] || "#60a5fa";
+
+  // ✅ Pastille rouge/verte = uniquement selon interventionType
+// externe = rouge, interne = vert
+const dotColor = (String(r.interventionType || "").toLowerCase().startsWith("ex"))
+  ? "#ef4444"
+  : "#22c55e";
+
+
+  // ✅ Clignotement UNIQUEMENT si admin a choisi Interne/Externe
+  // => on se base sur r.blink (stocké serveur) : true => blink, false => fixe
   const dotClass = "marker-dot" + (blink ? " blink" : "");
 
+  // ✅ Croix blanche si travaux effectués (bouton accessible à tous)
+  const showCross = !!r.done;
+
+  // Petit badge I/E selon type d'intervention
   const badge = (String(r.interventionType || "").toLowerCase().startsWith("ex") ? "E" : "I");
 
   const html = `
     <div class="marker-wrap">
-      <svg width="44" height="44" viewBox="0 0 64 64" aria-hidden="true">
-        <defs>
-          <radialGradient id="g_${r.id}" cx="50%" cy="35%" r="60%">
-            <stop offset="0%" stop-color="#cfe6ff"/>
-            <stop offset="100%" stop-color="${baseColor}"/>
-          </radialGradient>
-        </defs>
-
-        <!-- pastille principale -->
-        <circle cx="32" cy="28" r="18" fill="url(#g_${r.id})"/>
-
-        <!-- pictogramme -->
-        <path d="M40.5 24.2a8.3 8.3 0 0 1-10.8 7.9l-8.7 8.7a2.2 2.2 0 0 1-3.1 0l-1.7-1.7a2.2 2.2 0 0 1 0-3.1l8.7-8.7a8.3 8.3 0 1 1 15.6-4.1zm-5 0a3.3 3.3 0 1 0-6.6 0a3.3 3.3 0 0 0 6.6 0z"
-              fill="rgba(0,0,0,.65)"/>
-
-        <!-- tige -->
-        <path d="M32 46c-6 0-11 4-11 8h22c0-4-5-8-11-8z" fill="rgba(0,0,0,.35)"/>
+      <svg width="36" height="36" viewBox="0 0 36 36" aria-hidden="true">
+        <!-- pin coloré secteur -->
+        <path d="M18 2c6.6 0 12 5.4 12 12 0 8.6-10.2 19.5-11.6 21a0.6 0.6 0 0 1-0.8 0C16.2 33.5 6 22.6 6 14 6 7.4 11.4 2 18 2z"
+              fill="${baseColor}" stroke="rgba(255,255,255,0.35)" stroke-width="1"/>
 
         <!-- badge I/E -->
-        <circle cx="18" cy="14" r="6" fill="rgba(0,0,0,0.25)" stroke="rgba(255,255,255,0.35)" stroke-width="2"/>
-        <text x="18" y="17" text-anchor="middle" font-size="9" fill="#fff" font-family="system-ui,Segoe UI,Roboto,Arial">${badge}</text>
+        <circle cx="12" cy="12" r="6" fill="rgba(0,0,0,0.20)" stroke="rgba(255,255,255,0.25)" />
+        <text x="12" y="14" text-anchor="middle" font-size="9" fill="#ffffff" font-family="system-ui,Segoe UI,Roboto,Arial">${badge}</text>
 
-        <!-- pastille statut -->
-        <circle class="${dotClass}" cx="46" cy="14" r="6" fill="${dotColor}" stroke="white" stroke-width="2"/>
+        <!-- pastille statut (rouge/vert) -->
+        <circle class="${dotClass}" cx="26" cy="10" r="5" fill="${dotColor}" stroke="rgba(0,0,0,0.35)" stroke-width="1"/>
 
-        <!-- croix blanche si fait -->
-        ${done ? `
-          <path d="M24 24 L40 40 M40 24 L24 40" stroke="#fff" stroke-width="4" stroke-linecap="round" />
-        ` : ``}
+        <!-- croix blanche (travaux effectués) -->
+        ${showCross ? `
+        <path d="M14 18 L22 26 M22 18 L14 26" stroke="#ffffff" stroke-width="3" stroke-linecap="round" />
+        ` : ""}
       </svg>
-    </div>
-  `;
+    </div>`;
 
   return L.divIcon({
     className: "work-marker",
     html,
-    iconSize: [44,44],
-    iconAnchor: [22,42],
-    popupAnchor: [0,-36]
+    iconSize: [36, 36],
+    iconAnchor: [18, 34]
   });
 }
 
@@ -917,7 +899,8 @@ function getById(id) { return reports.find(r => r.id === id); }
     const icon = createWorkIcon(r);
 
     if (!m) {
-      m = L.marker([r.lat, r.lng], { icon }).addTo(map);
+      m = if (!r || !isFinite(+r.lat) || !isFinite(+r.lng)) { return null; }
+  L.marker([+r.lat, +r.lng], { icon }).addTo(map);
       m.on("click", () => {
         setSelected(r.id);
         highlightSelection();
@@ -1121,18 +1104,18 @@ async function toggleDone(id) {
   const r = getById(id);
   if (!r) return;
 
-  // ✅ uniquement done (croix blanche)
+  // ✅ On touche UNIQUEMENT au done (croix blanche)
   r.done = !r.done;
 
   saveLocal();
   renderAll();
+  showToast(r.done ? "Travaux effectués ✅" : "Travaux réouverts ↩️");
 
   try {
     const sess = loadSession();
     if (apiEnabled() && sess) {
-      await apiPost("saveReport", { token: sess.token, reportJson: JSON.stringify(r) });
-      updateHeaderSectorName();
-  await refreshFromServer();
+      await apiPost("undeleteReport", { token: sess.token, id: lastDeleted.id });
+      await refreshFromServer();
     }
   } catch (e) {
     console.warn("Sync done échouée", e);
@@ -1184,7 +1167,6 @@ ${firstPhoto ? `<img src="${getPhotoSrc(firstPhoto)}" alt="Photo">` : ""}
     secteurEl().value = "";
     addressEl().value = "";
     dateDemandeEl().value = "";
-    if (dateInterventionEl) { try { if (dateInterventionEl()) dateInterventionEl().value = ""; } catch(e) {} }
     dateExecutionEl().value = "";
     natureEl().value = "";
     commentEl().value = "";
@@ -1226,7 +1208,6 @@ ${firstPhoto ? `<img src="${getPhotoSrc(firstPhoto)}" alt="Photo">` : ""}
     secteurEl().value = r.secteur || "";
     addressEl().value = r.address || "";
     dateDemandeEl().value = r.dateDemande || "";
-    if (dateInterventionEl()) dateInterventionEl().value = r.dateIntervention || "";
     dateExecutionEl().value = r.dateExecution || "";
     natureEl().value = r.nature || "";
     commentEl().value = r.comment || "";
@@ -1437,12 +1418,10 @@ function handleMapSelect(e) {
       secteur: secteurEl().value || "",
       address: addressEl().value || "",
       dateDemande: dateDemandeEl().value || "",
-      dateIntervention: (isAdmin() ? (dateInterventionEl()?.value || "") : (existing?.dateIntervention || "")),
       dateExecution: dateExecutionEl().value || "",
       nature: natureEl().value || "",
       comment: commentEl().value || "",
       interventionType: document.getElementById('interventionType')?.value || 'interne',
-      blink: isAdmin() ? true : (existing?.blink || false),
       photos,
       updatedAt: Date.now()
     };
@@ -1458,7 +1437,54 @@ function handleMapSelect(e) {
   // =========================
   // UI WIRING
   // =========================
-  function wireUI() {
+  
+function showToast(message, opts = {}) {
+  const el = document.getElementById("toast");
+  if (!el) { alert(message); return; }
+  el.innerHTML = "";
+  const msg = document.createElement("div");
+  msg.textContent = message;
+  el.appendChild(msg);
+
+  if (opts.actionText && typeof opts.onAction === "function") {
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "secondary";
+    btn.style.marginTop = "10px";
+    btn.textContent = opts.actionText;
+    btn.onclick = () => {
+      try { opts.onAction(); } finally { hideToast(); }
+    };
+    el.appendChild(btn);
+  }
+
+  el.style.display = "block";
+  clearTimeout(showToast._t);
+  showToast._t = setTimeout(() => hideToast(), opts.durationMs || 2400);
+}
+function hideToast() {
+  const el = document.getElementById("toast");
+  if (el) el.style.display = "none";
+}
+
+
+
+function applySessionUI(sess){
+  // Top title
+  const top = document.getElementById("topSectorTitle");
+  if (top) {
+    if (!sess) top.textContent = "—";
+    else if (sess.role === "admin") top.textContent = "Administrateur";
+    else top.textContent = String(sess.secteur || "").trim() || "Secteur";
+  }
+  // Admin-only date field
+  const wrap = document.getElementById("adminDateInterventionWrap");
+  if (wrap) wrap.style.display = (sess && sess.role === "admin") ? "block" : "none";
+}
+
+
+function wireUI() {
+  applySessionUI(loadSession());
     qEl()?.addEventListener("input", renderList);
 
     exportBtn().onclick = () => {
@@ -1552,16 +1578,14 @@ function handleMapSelect(e) {
         pendingPhotos = [];
         updatePhotoStatus();
         persistAndRefresh(obj.id);
-        showToast("✅ Signalement enregistré");
 
         // Sync serveur (Apps Script)
         try {
           const sess = loadSession();
           if (apiEnabled() && sess) {
-            await apiPost("saveReport", { token: sess.token, reportJson: JSON.stringify(obj) });
+            await apiPost("undeleteReport", { token: sess.token, id: lastDeleted.id });
             // ✅ Re-synchronisation depuis le serveur (source de vérité)
-            updateHeaderSectorName();
-  await refreshFromServer();
+            await refreshFromServer();
           }
         } catch (e) {
           console.warn("Sync serveur échouée", e);
@@ -1601,7 +1625,7 @@ function handleMapSelect(e) {
     report: r,
     timeoutId: setTimeout(() => { lastDeleted = null; hideUndoBar(); }, 10000)
   };
-  showUndoBar("Signalement supprimé. Annuler ?");
+  if (loadSession() && loadSession().role === "admin") showUndoBar("Signalement supprimé. Annuler ?");
 
   // suppression serveur (logique)
   try {
@@ -1814,32 +1838,4 @@ window.sendByEmail = sendByEmail;
     if (loginBtn) loginBtn.onclick = () => loginViaGAS().catch(e => alert(e.message));
     if (loginOfflineBtn) loginOfflineBtn.onclick = loginOfflineDemo;
   });
-})()
-// =========================
-// TOAST notifications
-// =========================
-function showToast(msg) {
-  let t = document.getElementById("toast");
-  if (!t) {
-    t = document.createElement("div");
-    t.id = "toast";
-    t.style.position = "fixed";
-    t.style.left = "50%";
-    t.style.bottom = "84px";
-    t.style.transform = "translateX(-50%)";
-    t.style.background = "rgba(17,26,51,0.95)";
-    t.style.border = "1px solid #20305f";
-    t.style.borderRadius = "14px";
-    t.style.padding = "10px 12px";
-    t.style.zIndex = "5000";
-    t.style.fontSize = "13px";
-    t.style.boxShadow = "0 10px 25px rgba(0,0,0,.35)";
-    document.body.appendChild(t);
-  }
-  t.textContent = msg;
-  t.style.display = "block";
-  clearTimeout(t._hide);
-  t._hide = setTimeout(() => { t.style.display = "none"; }, 2200);
-}
-
-;
+})();
