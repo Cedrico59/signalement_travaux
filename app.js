@@ -898,7 +898,12 @@ const dotColor = (String(r.interventionType || "").toLowerCase().startsWith("ex"
   if (!isFinite(lat) || !isFinite(lng)) return;
 
   let m = markers.get(r.id);
-  const icon = createWorkIcon(r);
+    // 🔴🟢 Clignotement: quand admin marque "Externe", on met blink=true
+    if (isAdmin() && (r.interventionType === "externe" || r.typeIntervention === "externe")) {
+      r.blink = true;
+    }
+
+    const icon = createWorkIcon(r);
 
   if (!m) {
     m = L.marker([lat, lng], { icon }).addTo(map);
@@ -1573,7 +1578,12 @@ function wireUI() {
         try {
           const sess = loadSession();
           if (apiEnabled() && sess) {
-            await apiPost("undeleteReport", { token: sess.token, id: lastDeleted.id });
+            // ✅ Enregistre/Met à jour le signalement côté Google Sheets
+            await apiPost("saveReport", {
+              token: sess.token,
+              reportJson: JSON.stringify(obj)
+            });
+
             // ✅ Re-synchronisation depuis le serveur (source de vérité)
             await refreshFromServer();
           }
