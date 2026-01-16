@@ -147,6 +147,11 @@
   transform-origin: center;
 }
 
+
+/* Type intervention pastel */
+select.type-interne { background: rgba(46,125,50,0.20) !important; }
+select.type-externe { background: rgba(198,40,40,0.20) !important; }
+
 </style>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 </head>
@@ -188,6 +193,7 @@ background:#0b1020;position:sticky;top:0;z-index:1000;">
     <button id="historyBtn" class="secondary" type="button" style="width:auto;padding:8px 10px;">🧾 Historique</button>
     <button id="logoutBtn" class="secondary" type="button" style="width:auto;padding:8px 10px;">🔒 Déconnexion</button>
   </div>
+  <div style="flex:1;text-align:center;font-weight:800;opacity:.95" id="currentSectorName"></div>
 </header>
 
 <header class="app-header">
