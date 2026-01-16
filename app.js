@@ -71,6 +71,7 @@ async function apiPost(action, payload = {}) {
     try {
       const user = JSON.parse(userRaw);
       currentUser = user;
+      updateUIAfterLogin();
       return { token, user };
     } catch {
       return null;
@@ -110,6 +111,7 @@ async function loginViaGAS() {
 
   const user = { role: data.role, secteur: data.secteur || "" };
   currentUser = user;
+      updateUIAfterLogin();
   setSession(data.token, user);
 
   const modal = document.getElementById("loginModal");
@@ -1658,7 +1660,33 @@ function wireUI() {
     };
   }
 
-  // =========================
+  
+  function updateTopBar() {
+    const t = document.getElementById('topSectorTitle');
+    const b = document.getElementById('topUserBadge');
+    if (t) {
+      if (!currentUser) t.textContent = '—';
+      else if (currentUser.role === 'admin') t.textContent = 'Administrateur';
+      else t.textContent = currentUser.secteur || 'Secteur';
+    }
+    if (b) {
+      if (!currentUser) b.textContent = 'Non connecté';
+      else b.textContent = (currentUser.role === 'admin') ? '🛠 Admin' : '👤 Secteur';
+    }
+  }
+
+  function updateAdminFieldsVisibility() {
+    const wrap = document.getElementById('adminDateInterventionWrap');
+    if (!wrap) return;
+    wrap.style.display = isAdmin() ? 'block' : 'none';
+  }
+
+  function updateUIAfterLogin() {
+    updateTopBar();
+    updateAdminFieldsVisibility();
+  }
+
+// =========================
   // INIT
   // =========================
   function init() {
@@ -1822,6 +1850,7 @@ window.sendByEmail = sendByEmail;
     const sess = loadSession();
     if (sess) {
       currentUser = sess.user;
+      updateUIAfterLogin();
       try { await refreshFromServer(); } catch(e) { console.warn(e); }
     } else {
       const lm = document.getElementById("loginModal");
