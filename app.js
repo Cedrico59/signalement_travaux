@@ -898,10 +898,14 @@ const dotColor = (String(r.interventionType || "").toLowerCase().startsWith("ex"
   if (!isFinite(lat) || !isFinite(lng)) return;
 
   let m = markers.get(r.id);
-    // 🔴🟢 Clignotement: quand admin marque "Externe", on met blink=true
-    if (isAdmin() && (r.interventionType === "externe" || r.typeIntervention === "externe")) {
-      r.blink = true;
-    }
+    // 🔴🟢 Clignotement : admin -> externe OU interne => blink = true
+if (isAdmin() && (
+  r.interventionType === "externe" || r.typeIntervention === "externe" ||
+  r.interventionType === "interne" || r.typeIntervention === "interne"
+)) {
+  r.blink = true;
+}
+
 
     const icon = createWorkIcon(r);
 
