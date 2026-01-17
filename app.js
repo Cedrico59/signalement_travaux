@@ -1143,6 +1143,7 @@ ${firstPhoto ? `<img src="${getPhotoSrc(firstPhoto)}" alt="Photo">` : ""}
 <p><b>Secteur :</b> ${escapeHtml(r.secteur || "—")}</p>
 <p><b>Adresse :</b> ${escapeHtml(r.address || "—")}</p>
 <p><b>Date demande :</b> ${escapeHtml(r.dateDemande || "—")}</p>
+<p><b>Date demande d'intervention :</b> ${escapeHtml(r.dateIntervention || "—")}</p>
 <p><b>Date d’exécution :</b> ${escapeHtml(r.dateExecution || "—")}</p>
 <p><b>Nature :</b> ${escapeHtml(r.nature || "—")}</p>
 <p><b>Coordonnées :</b> ${fmtCoord(r.lat)}, ${fmtCoord(r.lng)}</p>
@@ -1729,6 +1730,7 @@ Secteur : ${r.secteur}
 Type : ${r.interventionType === "externe" ? "Externe" : "Interne"}
 Adresse : ${r.address}
 Date demande : ${r.dateDemande}
+Date demande d'intervention : ${r.dateIntervention}
 Date exécution : ${r.dateExecution}
 Nature : ${r.nature}
 
@@ -1834,6 +1836,7 @@ ${r.lat.toFixed(6)}, ${r.lng.toFixed(6)}
           <p><b>Type :</b> ${r.interventionType === "externe" ? "Externe" : "Interne"}</p>
           <p><b>Adresse :</b> ${r.address}</p>
           <p><b>Date demande :</b> ${r.dateDemande}</p>
+          <p><b>Date demande d'intervention : </b> ${r.dateIntervention}</p>
           <p><b>Date exécution :</b> ${r.dateExecution}</p>
           <p><b>Nature :</b> ${r.nature}</p>
           <p><b>Commentaire :</b><br>${r.comment}</p>
