@@ -1204,8 +1204,8 @@ ${firstPhoto ? `<img src="${getPhotoSrc(firstPhoto)}" alt="Photo">` : ""}
     lngEl().value = fmtCoord(r.lng);
     secteurEl().value = r.secteur || "";
     addressEl().value = r.address || "";
-    dateDemandeEl().value = r.dateDemande || "";
-    dateExecutionEl().value = r.dateExecution || "";
+    dateDemandeEl().value = formatDateForInput(r.dateDemande);
+    dateExecutionEl().value = formatDateForInput(r.dateExecution);
     natureEl().value = r.nature || "";
     commentEl().value = r.comment || "";
 
@@ -1881,3 +1881,19 @@ window.sendByEmail = sendByEmail;
     if (loginOfflineBtn) loginOfflineBtn.onclick = loginOfflineDemo;
   });
 })();
+
+function formatDateForInput(v) {
+  if (!v) return "";
+  if (typeof v === "string") {
+    // already yyyy-mm-dd
+    if (/^\d{4}-\d{2}-\d{2}$/.test(v)) return v;
+    // ISO
+    const d = new Date(v);
+    if (!isNaN(d)) return d.toISOString().slice(0, 10);
+  }
+  if (v instanceof Date) return v.toISOString().slice(0, 10);
+  // number timestamp
+  const d = new Date(v);
+  if (!isNaN(d)) return d.toISOString().slice(0, 10);
+  return "";
+}
