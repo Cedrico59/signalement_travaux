@@ -890,39 +890,35 @@ const dotColor = (String(r.interventionType || "").toLowerCase().startsWith("ex"
 
 
 
- function addOrUpdateMarker(r) {
-  // ✅ sécurité: éviter LatLng null/NaN qui casse Leaflet
+function addOrUpdateMarker(r) {
   if (!r) return;
   const lat = Number(r.lat);
   const lng = Number(r.lng);
   if (!isFinite(lat) || !isFinite(lng)) return;
 
   let m = markers.get(r.id);
-    // 🔴🟢 Clignotement : admin -> externe OU interne => blink = true
-if (isAdmin() && (
-  r.interventionType === "externe" || r.typeIntervention === "externe" ||
-  r.interventionType === "interne" || r.typeIntervention === "interne"
-)) {
-  r.blink = true;
-}
 
+  // 🔴🟢 Clignotement : admin => blink true (interne + externe)
+  if (isAdmin()) r.blink = true;
 
-    const icon = createWorkIcon(r);
+  // option : si terminé, stop blink
+  if (r.done === true) r.blink = false;
+
+  const icon = createWorkIcon(r);
 
   if (!m) {
     m = L.marker([lat, lng], { icon }).addTo(map);
-
     m.on("click", () => {
       setSelected(r.id);
       highlightSelection();
     });
-
     markers.set(r.id, m);
   } else {
     m.setLatLng([lat, lng]);
     m.setIcon(icon);
   }
 }
+
 
 
   // =========================
