@@ -30,23 +30,20 @@ function toNum(v){
     return !!GAS_URL;
   }
 
-async function apiPost(action, payload = {}) {
-  const params = new URLSearchParams({ action, ...payload });
-
-  const res = await fetch(GAS_URL, {
-    method: "POST",
-    body: params
+async function apiPost(action, data) {
+  if (!GAS_URL) throw new Error("GAS_URL manquant");
+  const payload = new URLSearchParams();
+  payload.set("action", action);
+  Object.entries(data || {}).forEach(([k, v]) => {
+    if (v === undefined || v === null) v = "";
+    payload.set(k, typeof v === "string" ? v : JSON.stringify(v));
   });
 
-  const text = await res.text();
-  let data;
-  try {
-    data = JSON.parse(text);
-  } catch {
-    throw new Error("Réponse serveur invalide");
-  }
-  if (!data.ok) throw new Error(data.error || "Erreur API");
-  return data;
+  // ✅ Apps Script: éviter le preflight CORS => PAS de Content-Type JSON
+  return fetch(GAS_URL, {
+    method: "POST",
+    body: payload
+  }).then(r => r.json());
 }
 
 
