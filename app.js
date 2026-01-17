@@ -1163,7 +1163,7 @@ ${firstPhoto ? `<img src="${getPhotoSrc(firstPhoto)}" alt="Photo">` : ""}
     secteurEl().value = "";
     addressEl().value = "";
     dateDemandeEl().value = "";
-    dateInterventionEl().value = r.dateIntervention || "";
+    if (dateInterventionEl()) dateInterventionEl().value = "";
     dateExecutionEl().value = "";
     natureEl().value = "";
     commentEl().value = "";
