@@ -1412,7 +1412,7 @@ function handleMapSelect(e) {
       secteur: secteurEl().value || "",
       address: addressEl().value || "",
       dateDemande: dateDemandeEl().value || "",
-    dateIntervention: (dateInterventionEl() ? dateInterventionEl().value : ""),
+    dateIntervention: (dateInterventionEl() ? (dateInterventionEl().value || "").slice(0,10) : ""),
       dateExecution: dateExecutionEl().value || "",
       nature: natureEl().value || "",
       comment: commentEl().value || "",
@@ -1555,6 +1555,8 @@ function wireUI() {
 
     // Save
     saveBtn().onclick = async () => {
+    console.log('SAVE CLICK');
+
       try {
         const existing = selectedId ? getById(selectedId) : null;
         const obj = await buildFromForm(existing);
@@ -1579,7 +1581,8 @@ function wireUI() {
           const sess = loadSession();
           if (apiEnabled() && sess) {
             // ✅ Enregistre/Met à jour le signalement côté Google Sheets
-            await apiPost("saveReport", {
+            console.log('SENDING saveReport');
+    await apiPost("saveReport", {
               token: sess.token,
               reportJson: JSON.stringify(obj)
             });
