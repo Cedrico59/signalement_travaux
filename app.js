@@ -918,6 +918,14 @@ const icon = createWorkIcon(r);
   }
 }
 
+function removeMarker(id) {
+  const m = markers.get(id);
+  if (m) {
+    try { map.removeLayer(m); } catch (_) {}
+    markers.delete(id);
+  }
+}
+
 
 
   // =========================
@@ -1108,7 +1116,12 @@ async function toggleDone(id) {
   try {
     const sess = loadSession();
     if (apiEnabled() && sess) {
-      await apiPost("undeleteReport", { token: sess.token, id: lastDeleted.id });
+      // Sync du champ done (et garder blink tel quel)
+      await apiPost("saveReport", {
+        token: sess.token,
+        reportJson: JSON.stringify(r)
+      });
+      showToast("Enregistré ✅");
       await refreshFromServer();
     }
   } catch (e) {
@@ -1205,6 +1218,13 @@ ${firstPhoto ? `<img src="${getPhotoSrc(firstPhoto)}" alt="Photo">` : ""}
     addressEl().value = r.address || "";
     dateDemandeEl().value = formatDateForInput(r.dateDemande);
     dateExecutionEl().value = formatDateForInput(r.dateExecution);
+    // Date demande d’intervention (admin)
+    if (typeof dateInterventionEl === "function" && dateInterventionEl()) {
+      dateInterventionEl().value = formatDateForInput(r.dateIntervention);
+    }
+    // Type intervention
+    const typeSel = document.getElementById('interventionType');
+    if (typeSel) typeSel.value = (r.interventionType || "interne");
     natureEl().value = r.nature || "";
     commentEl().value = r.comment || "";
 
@@ -1591,9 +1611,11 @@ function wireUI() {
 
             // ✅ Re-synchronisation depuis le serveur (source de vérité)
             await refreshFromServer();
+            showToast("✅ Enregistré");
           }
         } catch (e) {
           console.warn("Sync serveur échouée", e);
+          showToast("⚠️ Erreur synchronisation");
         }
 
       } catch (e) {
