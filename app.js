@@ -1,3 +1,5 @@
+function dateInterventionEl() { return document.getElementById("dateIntervention"); }
+
 
 function toNum(v){
   if (v === null || v === undefined) return NaN;
@@ -902,9 +904,7 @@ function addOrUpdateMarker(r) {
   if (isAdmin()) r.blink = true;
 
   // option : si terminé, stop blink
-  if (r.done === true) r.blink = false;
-
-  const icon = createWorkIcon(r);
+const icon = createWorkIcon(r);
 
   if (!m) {
     m = L.marker([lat, lng], { icon }).addTo(map);
@@ -1163,6 +1163,7 @@ ${firstPhoto ? `<img src="${getPhotoSrc(firstPhoto)}" alt="Photo">` : ""}
     secteurEl().value = "";
     addressEl().value = "";
     dateDemandeEl().value = "";
+    dateInterventionEl().value = r.dateIntervention || "";
     dateExecutionEl().value = "";
     natureEl().value = "";
     commentEl().value = "";
@@ -1414,6 +1415,7 @@ function handleMapSelect(e) {
       secteur: secteurEl().value || "",
       address: addressEl().value || "",
       dateDemande: dateDemandeEl().value || "",
+    dateIntervention: (dateInterventionEl() ? dateInterventionEl().value : ""),
       dateExecution: dateExecutionEl().value || "",
       nature: natureEl().value || "",
       comment: commentEl().value || "",
@@ -1626,7 +1628,7 @@ function wireUI() {
     report: r,
     timeoutId: setTimeout(() => { lastDeleted = null; hideUndoBar(); }, 10000)
   };
-  if (loadSession() && loadSession().role === "admin") showUndoBar("Signalement supprimé. Annuler ?");
+  if (loadSession() && loadSession().user && loadSession().user.role === "admin") showUndoBar("Signalement supprimé. Annuler ?");
 
   // suppression serveur (logique)
   try {
