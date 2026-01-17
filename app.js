@@ -40,10 +40,12 @@ async function apiPost(action, data) {
   });
 
   // ✅ Apps Script: éviter le preflight CORS => PAS de Content-Type JSON
-  return fetch(GAS_URL, {
-    method: "POST",
-    body: payload
-  }).then(r => r.json());
+  return fetch(GAS_URL, { method: "POST", body: payload })
+    .then(async (r) => {
+      const txt = await r.text();
+      console.log("GAS RAW RESPONSE:", txt);
+      try { return JSON.parse(txt); } catch(e) { throw new Error("Bad JSON from GAS: " + txt); }
+    });
 }
 
 
