@@ -139,26 +139,18 @@ async function logout() {
 // ✅ Toggle affichage ARCHIVES (admin)
 function ensureToggleArchivesBtn_() {
   if (!isAdmin()) return;
-  if (document.getElementById("toggleArchivesBtn")) return;
 
-  const btn = document.createElement("button");
-  btn.id = "toggleArchivesBtn";
-  btn.className = "secondary";
-  btn.type = "button";
-  btn.style.width = "auto";
-  btn.style.padding = "8px 10px";
-  btn.textContent = "🗄️ Archives";
+  // ✅ bouton dans le HTML
+  const btn = document.getElementById("toggleArchivesBtn");
+  if (!btn) return;
+
+  btn.style.display = "inline-flex";
 
   btn.onclick = async () => {
     showArchives = !showArchives;
     btn.textContent = showArchives ? "📄 Reports" : "🗄️ Archives";
     await refreshFromServer();
   };
-
-  // placer dans le header du haut à droite si possible
-  const zone = document.getElementById("adminActions");
-  if (zone) zone.appendChild(btn);
-  else document.body.appendChild(btn);
 }
 async function openHistoryAdmin() {
   if (!isAdmin()) { alert("Historique réservé admin"); return; }
@@ -853,6 +845,19 @@ function saveLocal() {
   }
 }
 
+
+
+function refreshMarkersAfterLoad_() {
+  // Essaie de relancer le rendu carte selon les fonctions existantes
+  try {
+    if (typeof renderMarkers_ === "function") renderMarkers_(reports);
+    if (typeof updateMarkers === "function") updateMarkers();
+    if (typeof refreshMap === "function") refreshMap();
+    if (typeof renderMap === "function") renderMap();
+  } catch (e) {
+    console.warn("refreshMarkersAfterLoad_ error", e);
+  }
+}
 
 async function refreshFromServer() {
   if (!apiEnabled()) { renderAll(); return; }
