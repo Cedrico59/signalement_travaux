@@ -1456,8 +1456,24 @@ function handleMapSelect(e) {
   // =========================
   
 function showToast(message, opts = {}) {
-  const el = document.getElementById("toast");
-  if (!el) { alert(message); return; }
+  let el = document.getElementById("toast");
+  if (!el) {
+    el = document.createElement("div");
+    el.id = "toast";
+    el.style.position = "fixed";
+    el.style.right = "16px";
+    el.style.bottom = "16px";
+    el.style.zIndex = 9999;
+    el.style.maxWidth = "320px";
+    el.style.padding = "12px 14px";
+    el.style.borderRadius = "12px";
+    el.style.background = "rgba(20,26,40,0.95)";
+    el.style.border = "1px solid rgba(255,255,255,0.12)";
+    el.style.color = "#fff";
+    el.style.boxShadow = "0 10px 30px rgba(0,0,0,0.35)";
+    el.style.fontSize = "14px";
+    document.body.appendChild(el);
+  }
   el.innerHTML = "";
   const msg = document.createElement("div");
   msg.textContent = message;
