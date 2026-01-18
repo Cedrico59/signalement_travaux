@@ -588,6 +588,19 @@ function clearAllMarkers_() {
   if (markersLayer) markersLayer.clearLayers();
 }
 
+function clearLegacyMarkers_() {
+  try {
+    if (Array.isArray(window.markers)) {
+      window.markers.forEach(m => { try { m.remove(); } catch(e){} });
+      window.markers = [];
+    }
+    if (window.markersById && typeof window.markersById === "object") {
+      Object.values(window.markersById).forEach(m => { try { m.remove(); } catch(e){} });
+      window.markersById = {};
+    }
+  } catch (e) {}
+}
+
 function toNum_(x) {
   if (x === null || x === undefined) return NaN;
   if (typeof x === "number") return x;
@@ -803,9 +816,9 @@ const doneBtn = () => el("doneBtn");
     "Bourg": "#2E7D32",
     "Buisson - Delcencerie": "#EF6C00",
     "Mairie - Quesne": "#6A1B9A",
-    "Pont - Plouich - Clémenceau": "#06b6d4",
+    "Pont - Plouich - Clémenceau": "#00838F",
     "Cimetière Delcencerie": "#4E342E",
-    "Cimetière Pont": "#eab308",
+    "Cimetière Pont": "#C62828",
     "Ferme aux Oies": "#546E7A"
   };
 
@@ -934,11 +947,11 @@ function getById(id) { return reports.find(r => r.id === id); }
     "Hautes Loges - Briqueterie": "#3b82f6",
     "Bourg": "#22c55e",
     "Buisson - Delcencerie": "#f97316",
-    "Mairie - Quesne": "#6A1B9A",
+    "Mairie - Quesne": "#a855f7",
     "Pont - Plouich - Clémenceau": "#06b6d4",
-    "Cimetière Delcencerie": "#4E342E",
+    "Cimetière Delcencerie": "#ef4444",
     "Cimetière Pont": "#eab308",
-    "Ferme aux Oies": "#546E7A"
+    "Ferme aux Oies": "#10b981"
   };
 
   const baseColor = sectorColors[String(r.secteur || "").trim()] || "#60a5fa";
