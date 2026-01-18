@@ -136,6 +136,14 @@ async function logout() {
 }
 
 
+// ✅ Conversion robuste (accepte virgule décimale)
+function toNum_(x) {
+  if (x === null || x === undefined) return NaN;
+  if (typeof x === "number") return x;
+  const s = String(x).trim().replace(",", ".");
+  return Number(s);
+}
+
 // ✅ Toggle affichage ARCHIVES (admin)
 function ensureToggleArchivesBtn_() {
   if (!isAdmin()) return;
