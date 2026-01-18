@@ -135,30 +135,6 @@ async function logout() {
   location.reload();
 }
 
-
-// ✅ Toggle affichage ARCHIVES (admin)
-function ensureToggleArchivesBtn_() {
-  if (!isAdmin()) return;
-  if (document.getElementById("toggleArchivesBtn")) return;
-
-  const btn = document.createElement("button");
-  btn.id = "toggleArchivesBtn";
-  btn.className = "secondary";
-  btn.type = "button";
-  btn.style.width = "auto";
-  btn.style.padding = "8px 10px";
-  btn.textContent = "🗄️ Archives";
-
-  btn.onclick = async () => {
-    showArchives = !showArchives;
-    btn.textContent = showArchives ? "📄 Reports" : "🗄️ Archives";
-    await refreshFromServer();
-  };
-
-  // placer dans le header du haut à droite si possible
-  const zone = document.getElementById("adminActions");
-  if (zone) zone.appendChild(btn);
-}
 async function openHistoryAdmin() {
   if (!isAdmin()) { alert("Historique réservé admin"); return; }
   const sess = loadSession();
@@ -582,10 +558,12 @@ const DEFAULT_CENTER = [50.676, 3.086];
   let map;
 
 // ✅ Layer markers (Reports + Archives)
-let markersLayer = null;
+window.markersLayer = null;
 
-function clearAllMarkers_() {
-  if (markersLayer) markersLayer.clearLayers();
+function toNum_(x) {
+  if (x === null || x === undefined) return NaN;
+  if (typeof x === "number") return x;
+  return Number(String(x).trim().replace(",", "."));
 }
 
 function clearLegacyMarkers_() {
@@ -601,42 +579,35 @@ function clearLegacyMarkers_() {
   } catch (e) {}
 }
 
-function toNum_(x) {
-  if (x === null || x === undefined) return NaN;
-  if (typeof x === "number") return x;
-  return Number(String(x).trim().replace(",", "."));
-}
-
 function renderMarkers_(list) {
-  try {
-    const theMap = window._leafletMap || ((typeof map !== "undefined" && map) ? map : null);
-    if (!theMap || typeof L === "undefined") {
-      // carte pas prête -> on retente
-      setTimeout(() => renderMarkers_(list), 300);
-      return;
-    }
+  const theMap = window._leafletMap || window.map || (typeof map !== "undefined" ? map : null);
+  if (!theMap || typeof L === "undefined") return;
 
-    if (!markersLayer) markersLayer = L.layerGroup().addTo(theMap);
-    clearAllMarkers_();
+  if (!window.markersLayer) window.markersLayer = L.layerGroup().addTo(theMap);
+  window.markersLayer.clearLayers();
 
-    for (const r of list) {
-      const lat = toNum_(r.lat ?? r.Latitude ?? r.LAT);
-      const lng = toNum_(r.lng ?? r.Longitude ?? r.LNG);
-      if (!Number.isFinite(lat) || !Number.isFinite(lng)) continue;
+  for (const r of list) {
+    const lat = toNum_(r.lat ?? r.Latitude ?? r.LAT);
+    const lng = toNum_(r.lng ?? r.Longitude ?? r.LNG);
+    if (!Number.isFinite(lat) || !Number.isFinite(lng)) continue;
 
-      const marker = L.marker([lat, lng]).addTo(markersLayer);
-      const title = r.dossierNumber || r.id || "Signalement";
-      const address = r.address || "";
-      marker.bindPopup(`<b>${title}</b><br>${address}`);
-    }
-  } catch (e) {
-    console.warn("renderMarkers_ error", e);
+    const marker = L.marker([lat, lng]).addTo(window.markersLayer);
+    const title = r.dossierNumber || r.id || "Signalement";
+    const address = r.address || "";
+    marker.bindPopup(`<b>${title}</b><br>${address}`);
   }
+
+  // Zoom auto
+  try {
+    const layers = window.markersLayer.getLayers();
+    if (layers.length > 0) {
+      const group = new L.featureGroup(layers);
+      theMap.fitBounds(group.getBounds().pad(0.2));
+    }
+  } catch (e) {}
 }
 
   let reports = [];
-  let showArchives = false; // ✅ mode affichage ARCHIVES
-
   let selectedId = null;
   let pendingPhotos = [];
   const markers = new Map(); // id -> marker
@@ -1411,31 +1382,6 @@ ${firstPhoto ? `<img src="${getPhotoSrc(firstPhoto)}" alt="Photo">` : ""}
 
       right.appendChild(seeBtn);
 
-      // ✅ Bouton RESTAURER (ADMIN) -> remet un report depuis ARCHIVES vers REPORTS
-      if (isAdmin() && r._archived) {
-        const restoreBtn = document.createElement("button");
-        restoreBtn.className = "secondary";
-        restoreBtn.textContent = "Restaurer";
-        restoreBtn.onclick = async (ev) => {
-          ev.stopPropagation();
-          if (!confirm("Restaurer ce signalement ?")) return;
-          try {
-            const sess = loadSession();
-            if (apiEnabled() && sess) {
-              await apiPost("restoreReport", { token: sess.token, id: r.id });
-              await refreshFromServer();
-              showToast("✅ Restauré");
-            } else {
-              alert("Connexion requise (mode serveur) pour restaurer.");
-            }
-          } catch (e) {
-            console.warn("Restauration serveur échouée", e);
-            alert("Erreur restauration : " + (e.message || e));
-          }
-        };
-        right.appendChild(restoreBtn);
-      }
-
       item.onclick = (e) => {
         if (e.target?.tagName?.toLowerCase() === "button") return;
         setSelected(r.id);
@@ -1467,9 +1413,7 @@ ${firstPhoto ? `<img src="${getPhotoSrc(firstPhoto)}" alt="Photo">` : ""}
     map = L.map("map", { zoomControl:true, minZoom: 12, maxZoom: 19, maxBounds: MARCQ_BOUNDS, maxBoundsViscosity: 1.0 }).fitBounds(MARCQ_BOUNDS);
 
     
-  
   window._leafletMap = map;
-window.map = map;
 L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
       maxZoom: 19, attribution: "&copy; OpenStreetMap"
     }).addTo(map);
@@ -1877,9 +1821,7 @@ function wireUI() {
   }
 
   function updateUIAfterLogin() {
-    
-  ensureToggleArchivesBtn_();
-updateTopBar();
+    updateTopBar();
     updateAdminFieldsVisibility();
   }
 
