@@ -596,8 +596,13 @@ function toNum_(x) {
 
 function renderMarkers_(list) {
   try {
-    const theMap = (typeof map !== "undefined" && map) ? map : window.map;
-    if (!theMap || typeof L === "undefined") return;
+    const theMap = window._leafletMap || ((typeof map !== "undefined" && map) ? map : null);
+    if (!theMap || typeof L === "undefined") {
+      // carte pas prête -> on retente
+      setTimeout(() => renderMarkers_(list), 300);
+      return;
+    }
+
     if (!markersLayer) markersLayer = L.layerGroup().addTo(theMap);
     clearAllMarkers_();
 
@@ -798,9 +803,9 @@ const doneBtn = () => el("doneBtn");
     "Bourg": "#2E7D32",
     "Buisson - Delcencerie": "#EF6C00",
     "Mairie - Quesne": "#6A1B9A",
-    "Pont - Plouich - Clémenceau": "#00838F",
+    "Pont - Plouich - Clémenceau": "#06b6d4",
     "Cimetière Delcencerie": "#4E342E",
-    "Cimetière Pont": "#C62828",
+    "Cimetière Pont": "#eab308",
     "Ferme aux Oies": "#546E7A"
   };
 
@@ -929,11 +934,11 @@ function getById(id) { return reports.find(r => r.id === id); }
     "Hautes Loges - Briqueterie": "#3b82f6",
     "Bourg": "#22c55e",
     "Buisson - Delcencerie": "#f97316",
-    "Mairie - Quesne": "#a855f7",
+    "Mairie - Quesne": "#6A1B9A",
     "Pont - Plouich - Clémenceau": "#06b6d4",
-    "Cimetière Delcencerie": "#ef4444",
+    "Cimetière Delcencerie": "#4E342E",
     "Cimetière Pont": "#eab308",
-    "Ferme aux Oies": "#10b981"
+    "Ferme aux Oies": "#546E7A"
   };
 
   const baseColor = sectorColors[String(r.secteur || "").trim()] || "#60a5fa";
@@ -1449,7 +1454,9 @@ ${firstPhoto ? `<img src="${getPhotoSrc(firstPhoto)}" alt="Photo">` : ""}
     map = L.map("map", { zoomControl:true, minZoom: 12, maxZoom: 19, maxBounds: MARCQ_BOUNDS, maxBoundsViscosity: 1.0 }).fitBounds(MARCQ_BOUNDS);
 
     
-  window.map = map;
+  
+  window._leafletMap = map;
+window.map = map;
 L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
       maxZoom: 19, attribution: "&copy; OpenStreetMap"
     }).addTo(map);
