@@ -847,7 +847,34 @@ function saveLocal() {
 
 
 
+
+// ✅ Layer spécial pour affichage ARCHIVES (évite les erreurs addLayer)
+let archivesLayer = null;
+
+function renderArchiveMarkers_(list) {
+  const theMap = window.map || window._leafletMap || (typeof map !== "undefined" ? map : null);
+  if (!theMap || typeof L === "undefined") return;
+
+  if (!archivesLayer) archivesLayer = L.layerGroup().addTo(theMap);
+  archivesLayer.clearLayers();
+
+  for (const r of list) {
+    const lat = Number(String(r.lat ?? r.Latitude ?? r.LAT ?? "").trim().replace(",", "."));
+    const lng = Number(String(r.lng ?? r.Longitude ?? r.LNG ?? "").trim().replace(",", "."));
+    if (!Number.isFinite(lat) || !Number.isFinite(lng)) continue;
+
+    const marker = L.marker([lat, lng]).addTo(archivesLayer);
+    const title = r.dossierNumber || r.id || "Archive";
+    marker.bindPopup(`<b>${title}</b>`);
+  }
+}
+
 function refreshMarkersAfterLoad_() {
+  if (showArchives) {
+    try { renderArchiveMarkers_(reports); } catch(e) {}
+    return;
+  }
+
   // Essaie de relancer le rendu carte selon les fonctions existantes
   try {
     if (typeof renderMarkers_ === "function") renderMarkers_(reports);
