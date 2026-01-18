@@ -2056,3 +2056,16 @@ function formatDateForInput(v) {
   if (!isNaN(d)) return d.toISOString().slice(0, 10);
   return "";
 }
+
+
+function initArchivesToggleBtn_() {
+  const btn = document.getElementById("toggleArchivesBtn");
+  if (!btn) return;
+  btn.style.display = "inline-flex";
+  btn.onclick = async () => {
+    showArchives = !showArchives;
+    btn.textContent = showArchives ? "📄 Reports" : "🗄️ Archives";
+    await refreshFromServer();
+  };
+}
+window.addEventListener("load", initArchivesToggleBtn_);
