@@ -136,14 +136,6 @@ async function logout() {
 }
 
 
-// ✅ Conversion robuste (accepte virgule décimale)
-function toNum_(x) {
-  if (x === null || x === undefined) return NaN;
-  if (typeof x === "number") return x;
-  const s = String(x).trim().replace(",", ".");
-  return Number(s);
-}
-
 // ✅ Toggle affichage ARCHIVES (admin)
 function ensureToggleArchivesBtn_() {
   if (!isAdmin()) return;
@@ -588,6 +580,38 @@ const DEFAULT_CENTER = [50.676, 3.086];
   // STATE
   // =========================
   let map;
+
+// ✅ Layer pour afficher les markers (Reports + Archives)
+let markersLayer = null;
+
+function clearAllMarkers_() {
+  if (markersLayer) markersLayer.clearLayers();
+}
+
+function renderMarkers_(list) {
+  try {
+    if (typeof map === "undefined" || !map) return;
+    if (!markersLayer) {
+      markersLayer = L.layerGroup().addTo(map);
+    }
+    clearAllMarkers_();
+
+    for (const r of list) {
+      const lat = Number(String(r.lat ?? r.Latitude ?? r.LAT ?? "").trim().replace(",", "."));
+      const lng = Number(String(r.lng ?? r.Longitude ?? r.LNG ?? "").trim().replace(",", "."));
+      if (!Number.isFinite(lat) || !Number.isFinite(lng)) continue;
+
+      const m = L.marker([lat, lng]).addTo(markersLayer);
+
+      const title = r.dossierNumber || r.id || "Signalement";
+      const address = r.address || "";
+      m.bindPopup(`<b>${title}</b><br>${address}`);
+    }
+  } catch (e) {
+    console.warn("renderMarkers_ error", e);
+  }
+}
+
   let reports = [];
   let showArchives = false; // ✅ mode affichage ARCHIVES
 
