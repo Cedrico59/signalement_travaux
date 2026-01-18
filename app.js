@@ -567,6 +567,8 @@ let lastDeleted = null; // { report, markerLatLng, timeoutId }
 
 function showUndoBar(message) {
   let bar = document.getElementById("undoBar");
+
+  // (Re)création propre
   if (!bar) {
     bar = document.createElement("div");
     bar.id = "undoBar";
@@ -583,14 +585,37 @@ function showUndoBar(message) {
     bar.style.alignItems = "center";
     bar.style.justifyContent = "space-between";
     bar.style.gap = "12px";
-    bar.innerHTML = `<span id="undoMsg" style="font-size:13px;"></span>
-                     <button id="undoBtn" class="secondary" type="button" style="width:auto;padding:8px 10px;">↩️ Annuler</button>`;
+
+    // IMPORTANT : créer aussi les éléments avec createElement (pas innerHTML fragile)
+    const msg = document.createElement("span");
+    msg.id = "undoMsg";
+    msg.style.fontSize = "13px";
+    msg.style.flex = "1";
+
+    const btn = document.createElement("button");
+    btn.id = "undoBtn";
+    btn.className = "secondary";
+    btn.type = "button";
+    btn.style.width = "auto";
+    btn.style.padding = "8px 10px";
+    btn.textContent = "↩️ Annuler";
+
+    bar.appendChild(msg);
+    bar.appendChild(btn);
     document.body.appendChild(bar);
   }
-  document.getElementById("undoMsg").textContent = message;
+
+  // ✅ Sécurité anti-null
+  const msgEl = document.getElementById("undoMsg");
+  if (msgEl) msgEl.textContent = message;
   bar.style.display = "flex";
-  document.getElementById("undoBtn").onclick = () => undoDelete().catch(e => alert(e.message));
+
+  const btnEl = document.getElementById("undoBtn");
+  if (btnEl) {
+    btnEl.onclick = () => undoDelete().catch(e => alert(e.message));
+  }
 }
+
 
 function hideUndoBar() {
   const bar = document.getElementById("undoBar");
@@ -599,25 +624,33 @@ function hideUndoBar() {
 
 async function undoDelete() {
   if (!lastDeleted) return;
-  const { report } = lastDeleted;
-  clearTimeout(lastDeleted.timeoutId);
+
+  const saved = lastDeleted; // ✅ on garde tout
+  clearTimeout(saved.timeoutId);
   lastDeleted = null;
 
-  reports.push(report);
+  // Réinjecte en local
+  reports.push(saved.report);
   saveLocal();
   renderAll();
 
   // resync serveur
   try {
-    const sess = loadSession();
-    if (apiEnabled() && sess) {
-      await apiPost("undeleteReport", { token: sess.token, id: lastDeleted.id });
-    }
-  } catch (e) {
-    console.warn("Undo sync serveur échouée", e);
+  const sess = loadSession();
+  if (apiEnabled() && sess) {
+    await apiPost("deleteReport", { token: sess.token, id });
+    await refreshFromServer();
+    showToast("✅ Supprimé");
   }
+} catch (e) {
+  console.warn("Suppression serveur échouée", e);
+  showToast("⚠️ Erreur suppression");
+}
+
+
   hideUndoBar();
 }
+
 
 
   // =========================
