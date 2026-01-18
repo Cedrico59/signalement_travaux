@@ -147,6 +147,8 @@
   transform-origin: center;
 }
 
+
+.admin-actions{display:flex;gap:8px;align-items:center;justify-content:flex-end;margin-left:auto;}
 </style>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 </head>
@@ -191,6 +193,7 @@ background:#0b1020;position:sticky;top:0;z-index:1000;">
     <button id="historyBtn" class="secondary" type="button" style="width:auto;padding:8px 10px;">🧾 Historique</button>
     <button id="logoutBtn" class="secondary" type="button" style="width:auto;padding:8px 10px;">🔒 Déconnexion</button>
   </div>
+  <div id="adminActions" class="admin-actions"></div>
 </header>
 
 <header class="app-header">

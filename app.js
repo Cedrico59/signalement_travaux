@@ -135,6 +135,30 @@ async function logout() {
   location.reload();
 }
 
+
+// ✅ Toggle affichage ARCHIVES (admin)
+function ensureToggleArchivesBtn_() {
+  if (!isAdmin()) return;
+  if (document.getElementById("toggleArchivesBtn")) return;
+
+  const btn = document.createElement("button");
+  btn.id = "toggleArchivesBtn";
+  btn.className = "secondary";
+  btn.type = "button";
+  btn.style.width = "auto";
+  btn.style.padding = "8px 10px";
+  btn.textContent = "🗄️ Archives";
+
+  btn.onclick = async () => {
+    showArchives = !showArchives;
+    btn.textContent = showArchives ? "📄 Reports" : "🗄️ Archives";
+    await refreshFromServer();
+  };
+
+  // placer dans le header du haut à droite si possible
+  const zone = document.getElementById("adminActions");
+  if (zone) zone.appendChild(btn);
+}
 async function openHistoryAdmin() {
   if (!isAdmin()) { alert("Historique réservé admin"); return; }
   const sess = loadSession();
@@ -557,6 +581,8 @@ const DEFAULT_CENTER = [50.676, 3.086];
   // =========================
   let map;
   let reports = [];
+  let showArchives = false; // ✅ mode affichage ARCHIVES
+
   let selectedId = null;
   let pendingPhotos = [];
   const markers = new Map(); // id -> marker
@@ -1331,6 +1357,31 @@ ${firstPhoto ? `<img src="${getPhotoSrc(firstPhoto)}" alt="Photo">` : ""}
 
       right.appendChild(seeBtn);
 
+      // ✅ Bouton RESTAURER (ADMIN) -> remet un report depuis ARCHIVES vers REPORTS
+      if (isAdmin() && r._archived) {
+        const restoreBtn = document.createElement("button");
+        restoreBtn.className = "secondary";
+        restoreBtn.textContent = "Restaurer";
+        restoreBtn.onclick = async (ev) => {
+          ev.stopPropagation();
+          if (!confirm("Restaurer ce signalement ?")) return;
+          try {
+            const sess = loadSession();
+            if (apiEnabled() && sess) {
+              await apiPost("restoreReport", { token: sess.token, id: r.id });
+              await refreshFromServer();
+              showToast("✅ Restauré");
+            } else {
+              alert("Connexion requise (mode serveur) pour restaurer.");
+            }
+          } catch (e) {
+            console.warn("Restauration serveur échouée", e);
+            alert("Erreur restauration : " + (e.message || e));
+          }
+        };
+        right.appendChild(restoreBtn);
+      }
+
       item.onclick = (e) => {
         if (e.target?.tagName?.toLowerCase() === "button") return;
         setSelected(r.id);
@@ -1768,7 +1819,9 @@ function wireUI() {
   }
 
   function updateUIAfterLogin() {
-    updateTopBar();
+    
+  ensureToggleArchivesBtn_();
+updateTopBar();
     updateAdminFieldsVisibility();
   }
 
