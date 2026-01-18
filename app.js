@@ -2089,3 +2089,27 @@ document.addEventListener("DOMContentLoaded", () => {
     try { await refreshFromServer(); } catch(e){ console.warn(e); }
   });
 });
+
+
+// Toggle Archives/Reports - handler robuste + refresh universel
+async function refreshAll_() {
+  if (typeof refreshFromServer === "function") return refreshFromServer();
+  if (typeof refresh === "function") return refresh();
+  if (typeof loadReports === "function") return loadReports();
+  if (typeof fetchReports === "function") return fetchReports();
+  if (typeof syncReports === "function") return syncReports();
+  console.warn("Aucune fonction de refresh trouvée");
+}
+
+document.addEventListener("DOMContentLoaded", () => {
+  const btn = document.getElementById("toggleArchivesBtn");
+  if (!btn) return;
+  btn.style.display = "inline-flex";
+
+  btn.addEventListener("click", async () => {
+    window.showArchives = !window.showArchives;
+    btn.textContent = window.showArchives ? "📄 Reports" : "🗄️ Archives";
+    console.log("MODE =", window.showArchives ? "ARCHIVES" : "REPORTS");
+    try { await refreshAll_(); } catch(e) { console.warn(e); }
+  });
+});
