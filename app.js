@@ -1974,214 +1974,88 @@ function formatDateForInput(v) {
 
 
 /* ===============================
-   PATCH ARCHIVES/REPORTS TOGGLE (safe append)
-   - keeps your full app.js
-   - creates/uses #toggleArchivesBtn
-   - uses marq_auth_token for GAS calls
-   - provides reloadReportsOrArchives__() expected by older code
+   ✅ FIX ULTIME ARCHIVES/REPORTS
+   bouton en HTML + toggle + reload + markers
 ================================= */
-(function () {
-  // Avoid double-install
-  if (window.__ARCHIVES_TOGGLE_PATCH_INSTALLED__) return;
-  window.__ARCHIVES_TOGGLE_PATCH_INSTALLED__ = true;
 
-  // Global mode flag
-  window.showArchives = (typeof window.showArchives === "boolean") ? window.showArchives : false;
+window.showArchives = window.showArchives ?? false;
 
-  function getTokenPatch_() {
-    try {
-      const keys = ["marq_auth_token", "token", "authToken", "jwt", "access_token"];
-      for (const k of keys) {
-        const v = localStorage.getItem(k);
-        if (typeof v === "string" && v.trim().length > 10) return v.trim();
-      }
-      if (typeof window.token === "string" && window.token.trim().length > 10) return window.token.trim();
-      if (typeof window.authToken === "string" && window.authToken.trim().length > 10) return window.authToken.trim();
-      return null;
-    } catch (e) {
-      return null;
+function getTokenUltimate_(){
+  try {
+    const keys = ["marq_auth_token","token","authToken","jwt","access_token"];
+    for(const k of keys){
+      const v = localStorage.getItem(k);
+      if(v && v.length > 10) return v;
     }
+    return null;
+  } catch(e){
+    return null;
   }
+}
 
-  async function apiPostPatch_(action, payload) {
-    const url = (typeof API_URL !== "undefined") ? API_URL : (window.API_URL || window.apiUrl || window.API || window.api);
-    if (!url) throw new Error("API_URL manquant");
-    const res = await fetch(url, {
-      method: "POST",
-      headers: { "Content-Type": "text/plain;charset=utf-8" },
-      body: JSON.stringify(Object.assign({ action: action }, payload || {}))
-    });
-    return res.json();
-  }
-
-  // Draw markers in a dedicated layer without touching your existing marker system
-  let patchLayer_ = null;
-  function getMapPatch_() {
-    try {
-      return window._leafletMap || window.map || (typeof map !== "undefined" ? map : null);
-    } catch (e) {
-      return null;
-    }
-  }
-  function clearPatchMarkers_() {
-    const m = getMapPatch_();
-    if (!m || typeof L === "undefined") return;
-    if (!patchLayer_) return;
-    patchLayer_.clearLayers();
-  }
-  function renderPatchMarkers_(items) {
-    const m = getMapPatch_();
-    if (!m || typeof L === "undefined") return;
-    if (!patchLayer_) patchLayer_ = L.layerGroup().addTo(m);
-    patchLayer_.clearLayers();
-
-    (items || []).forEach(function (r) {
-      const lat = Number(String(r.lat ?? r.Latitude ?? r.latitude ?? "").replace(",", "."));
-      const lng = Number(String(r.lng ?? r.Longitude ?? r.longitude ?? "").replace(",", "."));
-      if (!isFinite(lat) || !isFinite(lng)) return;
-      const mk = L.marker([lat, lng]).addTo(patchLayer_);
-      const title = r.dossierNumber || r.dossier || r.id || "Signalement";
-      const addr = r.address || r.adresse || "";
-      mk.bindPopup("<b>" + String(title) + "</b><br>" + String(addr));
-    });
-  }
-
-  // This is the function name your console errors show (double underscore)
-  window.reloadReportsOrArchives__ = async function () {
-    // If your app already has a refresh function, prefer it
-    try {
-      if (typeof window.refreshFromServer === "function") return await window.refreshFromServer();
-      if (typeof window.refreshFromServer_ === "function") return await window.refreshFromServer_();
-      if (typeof window.refresh === "function") return await window.refresh();
-    } catch (e) {
-      // fallback below
-    }
-
-    const token = getTokenPatch_();
-    if (!token) {
-      console.warn("Token manquant - reconnecte toi (marq_auth_token introuvable)");
-      return;
-    }
-
-    const action = window.showArchives ? "getArchives" : "getReports";
-    let data;
-    try {
-      data = await apiPostPatch_(action, { token: token });
-    } catch (e) {
-      console.warn("Erreur API", e);
-      return;
-    }
-
-    if (data && Array.isArray(data.reports)) {
-      // If your app uses a global reports array, update it
-      try {
-        if (typeof window.reports !== "undefined") window.reports = data.reports;
-        if (typeof reports !== "undefined") reports = data.reports; // may throw in strict mode; ignore
-      } catch (e) {}
-
-      // If your app has its own marker renderer, try to use it; otherwise draw patch markers
-      try {
-        if (typeof window.renderAll === "function") return window.renderAll();
-        if (typeof window.renderReports === "function") return window.renderReports();
-        if (typeof window.renderMarkers === "function") return window.renderMarkers();
-      } catch (e) {}
-
-      renderPatchMarkers_(data.reports);
-    } else {
-      console.warn("Reponse inattendue", data);
-      clearPatchMarkers_();
-    }
-  };
-
-  function ensureToggleBtn_() {
-    let btn = document.getElementById("toggleArchivesBtn");
-    if (btn) return btn;
-
-    // try to place near existing top buttons
-    const host =
-      document.querySelector(".top-actions") ||
-      document.querySelector(".header-actions") ||
-      document.querySelector("header") ||
-      document.body;
-
-    btn = document.createElement("button");
-    btn.id = "toggleArchivesBtn";
-    btn.type = "button";
-    btn.textContent = "Archives";
-    btn.style.display = "inline-flex";
-    btn.style.alignItems = "center";
-    btn.style.gap = "6px";
-    btn.style.padding = "8px 12px";
-    btn.style.borderRadius = "12px";
-    btn.style.border = "1px solid rgba(255,255,255,0.18)";
-    btn.style.background = "rgba(31,41,55,0.9)";
-    btn.style.color = "#fff";
-    btn.style.cursor = "pointer";
-    btn.style.marginLeft = "8px";
-
-    host.appendChild(btn);
-    return btn;
-  }
-
-  document.addEventListener("DOMContentLoaded", function () {
-    const btn = ensureToggleBtn_();
-    btn.addEventListener("click", async function () {
-      window.showArchives = !window.showArchives;
-      btn.textContent = window.showArchives ? "Reports" : "Archives";
-      console.log("MODE =", window.showArchives ? "ARCHIVES" : "REPORTS");
-      try {
-        await window.reloadReportsOrArchives__();
-      } catch (e) {
-        console.warn(e);
-      }
-    });
+async function apiPostUltimate_(action, payload){
+  const url = window.API_URL || window.apiUrl || (typeof API_URL !== "undefined" ? API_URL : null);
+  if(!url) throw new Error("API_URL manquant");
+  const res = await fetch(url,{
+    method:"POST",
+    headers:{ "Content-Type":"text/plain;charset=utf-8" },
+    body: JSON.stringify({action, ...payload})
   });
-})();
+  return res.json();
+}
 
+let ultimateLayer = null;
+function renderUltimateMarkers_(items){
+  const mapRef = window._leafletMap || window.map || (typeof map !== "undefined" ? map : null);
+  if(!mapRef || typeof L === "undefined") return;
 
+  if(!ultimateLayer) ultimateLayer = L.layerGroup().addTo(mapRef);
+  ultimateLayer.clearLayers();
 
-/* === FORCE BUTTON FIXED TOP-RIGHT (V14) === */
-(function(){
-  if (window.__FORCE_ARCHIVES_BTN_FIXED__) return;
-  window.__FORCE_ARCHIVES_BTN_FIXED__ = true;
+  (items || []).forEach(r=>{
+    const lat = Number(String(r.lat ?? r.latitude ?? r.Latitude ?? "").replace(",","."));
+    const lng = Number(String(r.lng ?? r.longitude ?? r.Longitude ?? "").replace(",","."));
+    if(!Number.isFinite(lat) || !Number.isFinite(lng)) return;
 
-  function createFixedBtn_(){
-    let b = document.getElementById("toggleArchivesBtn");
-    if (b) return b;
-    b = document.createElement("button");
-    b.id = "toggleArchivesBtn";
-    b.type = "button";
-    b.textContent = "Archives";
-    b.style.position = "fixed";
-    b.style.top = "12px";
-    b.style.right = "12px";
-    b.style.zIndex = "99999";
-    b.style.display = "inline-flex";
-    b.style.alignItems = "center";
-    b.style.gap = "6px";
-    b.style.padding = "8px 12px";
-    b.style.borderRadius = "12px";
-    b.style.border = "1px solid rgba(255,255,255,0.25)";
-    b.style.background = "rgba(17,24,39,0.92)";
-    b.style.color = "#fff";
-    b.style.cursor = "pointer";
-    document.body.appendChild(b);
-    return b;
+    const mk = L.marker([lat,lng]).addTo(ultimateLayer);
+    const title = r.dossierNumber || r.id || "Signalement";
+    const addr = r.address || r.adresse || "";
+    mk.bindPopup("<b>"+title+"</b><br>"+addr);
+  });
+}
+
+async function reloadUltimate_(){
+  const token = getTokenUltimate_();
+  if(!token){
+    console.warn("Token manquant (marq_auth_token) => reconnecte toi");
+    return;
   }
 
-  document.addEventListener("DOMContentLoaded", function(){
-    const btn = createFixedBtn_();
-    btn.addEventListener("click", async function(){
-      window.showArchives = !window.showArchives;
-      btn.textContent = window.showArchives ? "Reports" : "Archives";
-      console.log("MODE =", window.showArchives ? "ARCHIVES" : "REPORTS");
-      try {
-        if (typeof window.reloadReportsOrArchives__ === "function") {
-          await window.reloadReportsOrArchives__();
-        } else {
-          console.warn("reloadReportsOrArchives__ introuvable");
-        }
-      } catch(e){ console.warn(e); }
-    });
+  const action = window.showArchives ? "getArchives" : "getReports";
+  const data = await apiPostUltimate_(action, { token });
+
+  if(data && Array.isArray(data.reports)){
+    try{ window.reports = data.reports; }catch(e){}
+    renderUltimateMarkers_(data.reports);
+  }else{
+    console.warn("Réponse inattendue", data);
+    renderUltimateMarkers_([]);
+  }
+}
+
+document.addEventListener("DOMContentLoaded", ()=>{
+  const btn = document.getElementById("toggleArchivesBtnFixed");
+  if(!btn){
+    console.warn("Bouton FIX HTML introuvable");
+    return;
+  }
+
+  btn.textContent = window.showArchives ? "Reports" : "Archives";
+
+  btn.addEventListener("click", async ()=>{
+    window.showArchives = !window.showArchives;
+    btn.textContent = window.showArchives ? "Reports" : "Archives";
+    console.log("MODE =", window.showArchives ? "ARCHIVES" : "REPORTS");
+    try{ await reloadUltimate_(); }catch(e){ console.warn(e); }
   });
-})();
+});

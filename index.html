@@ -393,7 +393,7 @@ background:#0b1020;position:sticky;top:0;z-index:1000;">
   crossorigin=""
 ></script>
 
-<script src="app.js?v=V12CLEAN"></script>
+<script src="app.js?v=ULTIME1"></script>
 <script>
   // PWA (simple)
   if ("serviceWorker" in navigator) {
@@ -479,5 +479,29 @@ transition:opacity .3s;">
 
 
   <div id="toast" style="position:fixed;bottom:18px;left:50%;transform:translateX(-50%);z-index:9999;display:none;min-width:260px;max-width:90vw;padding:12px 14px;border-radius:14px;background:rgba(10,15,25,.92);border:1px solid rgba(255,255,255,.14);box-shadow:0 12px 32px rgba(0,0,0,.35);color:#eaf1ff;font-weight:700;"></div>
+
+<!-- ✅ FIX ULTIME : bouton Archives/Reports (toujours visible) -->
+<button id="toggleArchivesBtnFixed">Archives</button>
+
+<style>
+  #toggleArchivesBtnFixed{
+    position: fixed;
+    top: 12px;
+    right: 12px;
+    z-index: 999999;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 12px;
+    border-radius: 12px;
+    border: 1px solid rgba(255,255,255,0.25);
+    background: rgba(17,24,39,0.92);
+    color: #fff;
+    cursor: pointer;
+    font-weight: 600;
+  }
+  #toggleArchivesBtnFixed:hover{ background: rgba(30,41,59,0.95); }
+</style>
+
 </body>
 </html>
