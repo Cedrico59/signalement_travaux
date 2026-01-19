@@ -2056,3 +2056,9 @@ document.addEventListener("DOMContentLoaded", () => {
     try { await reloadReportsOrArchives_(); } catch(e) { console.warn(e); }
   });
 });
+
+
+// Alias compat (si ancien code appelle reloadReportsOrArchives__)
+if (typeof window.reloadReportsOrArchives__ !== "function") {
+  window.reloadReportsOrArchives__ = function() { return reloadReportsOrArchives_(); };
+}
