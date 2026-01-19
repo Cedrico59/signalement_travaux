@@ -2137,3 +2137,51 @@ function formatDateForInput(v) {
     });
   });
 })();
+
+
+
+/* === FORCE BUTTON FIXED TOP-RIGHT (V14) === */
+(function(){
+  if (window.__FORCE_ARCHIVES_BTN_FIXED__) return;
+  window.__FORCE_ARCHIVES_BTN_FIXED__ = true;
+
+  function createFixedBtn_(){
+    let b = document.getElementById("toggleArchivesBtn");
+    if (b) return b;
+    b = document.createElement("button");
+    b.id = "toggleArchivesBtn";
+    b.type = "button";
+    b.textContent = "Archives";
+    b.style.position = "fixed";
+    b.style.top = "12px";
+    b.style.right = "12px";
+    b.style.zIndex = "99999";
+    b.style.display = "inline-flex";
+    b.style.alignItems = "center";
+    b.style.gap = "6px";
+    b.style.padding = "8px 12px";
+    b.style.borderRadius = "12px";
+    b.style.border = "1px solid rgba(255,255,255,0.25)";
+    b.style.background = "rgba(17,24,39,0.92)";
+    b.style.color = "#fff";
+    b.style.cursor = "pointer";
+    document.body.appendChild(b);
+    return b;
+  }
+
+  document.addEventListener("DOMContentLoaded", function(){
+    const btn = createFixedBtn_();
+    btn.addEventListener("click", async function(){
+      window.showArchives = !window.showArchives;
+      btn.textContent = window.showArchives ? "Reports" : "Archives";
+      console.log("MODE =", window.showArchives ? "ARCHIVES" : "REPORTS");
+      try {
+        if (typeof window.reloadReportsOrArchives__ === "function") {
+          await window.reloadReportsOrArchives__();
+        } else {
+          console.warn("reloadReportsOrArchives__ introuvable");
+        }
+      } catch(e){ console.warn(e); }
+    });
+  });
+})();
