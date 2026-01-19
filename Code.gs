@@ -641,8 +641,38 @@ function handleGetArchives_(session, p) {
 
   const ss = ss_();
   const sh = ss.getSheetByName(SH_ARCHIVES);
-  if (!sh) return jsonOut_({ ok: true, reports: [] });
+  if (!sh || sh.getLastRow() < 2) {
+    return jsonOut_({ ok: true, reports: [] });
+  }
 
-  const reports = readSheetAsObjects_(sh);
-  return jsonOut_({ ok: true, reports });
+  const reports = readSheetAsObjectsRaw_(sh);
+
+  // Assurer la présence de r.id (si la colonne s'appelle ID)
+  const fixed = reports.map(r => {
+    if (!r.id && r.ID) r.id = r.ID;
+    return r;
+  });
+
+  return jsonOut_({ ok: true, reports: fixed });
+}
+
+
+/**
+ * Lecture brute d'une feuille en liste d'objets {header: value}
+ * (sans filtrage, compatible ARCHIVES)
+ */
+function readSheetAsObjectsRaw_(sh) {
+  const values = sh.getDataRange().getValues();
+  if (values.length < 2) return [];
+  const headers = values[0].map(h => String(h).trim());
+  const out = [];
+  for (let r = 1; r < values.length; r++) {
+    const row = values[r];
+    const obj = {};
+    for (let c = 0; c < headers.length; c++) {
+      obj[headers[c]] = row[c];
+    }
+    out.push(obj);
+  }
+  return out;
 }

@@ -1784,13 +1784,25 @@ function wireUI() {
     renderList();
     setSelected(null);
   }
+// Mode d'affichage courant : "reports" (actifs) ou "archives" (archivés)
+// Les archives sont identifiées via le champ r.deleted === true
+let currentMode = "reports";
+
+function isArchived(r) {
+  return r && r.deleted === true;
+}
+
 function renderMarkers() {
   // Nettoie tous les marqueurs affichés
   for (const m of markers.values()) map.removeLayer(m);
   markers.clear();
 
-  // Recrée uniquement ceux visibles
-  for (const r of reports.filter(r => canSeeReport(r))) {
+  // Recrée uniquement ceux visibles selon le mode
+  const visible = reports
+    .filter(r => canSeeReport(r))
+    .filter(r => (currentMode === "archives") ? isArchived(r) : !isArchived(r));
+
+  for (const r of visible) {
     addOrUpdateMarker(r);
   }
 }
