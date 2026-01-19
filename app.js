@@ -1980,18 +1980,50 @@ function formatDateForInput(v) {
 
 window.showArchives = window.showArchives ?? false;
 
+
 function getTokenUltimate_(){
   try {
-    const keys = ["marq_auth_token","token","authToken","jwt","access_token"];
-    for(const k of keys){
+    // 1) direct keys
+    const directKeys = [
+      "marq_auth_token","marq_token","auth_token","token","authToken","jwt","access_token",
+      "marqAuthToken","marq-auth-token","session_token","sessionToken"
+    ];
+    for (const k of directKeys){
       const v = localStorage.getItem(k);
-      if(v && v.length > 10) return v;
+      if(v && v.length > 10 && !v.startsWith("{")) return v;
+      if(v && v.length > 10 && v.startsWith("{")){
+        try{
+          const obj = JSON.parse(v);
+          const cand = obj.token || obj.access_token || obj.jwt || obj.authToken;
+          if(cand && String(cand).length > 10) return String(cand);
+        }catch(e){}
+      }
+    }
+
+    // 2) scan all localStorage values (some apps store {token: "..."} under custom key)
+    for (let i=0;i<localStorage.length;i++){
+      const key = localStorage.key(i);
+      const val = localStorage.getItem(key);
+      if(!val) continue;
+
+      // raw token-like
+      if(val.length > 40 && /^[A-Za-z0-9\-\._]+$/.test(val)) return val;
+
+      // json with token fields
+      if(val.startsWith("{")){
+        try{
+          const obj = JSON.parse(val);
+          const cand = obj.token || obj.access_token || obj.jwt || obj.authToken || obj.marq_auth_token;
+          if(cand && String(cand).length > 10) return String(cand);
+        }catch(e){}
+      }
     }
     return null;
   } catch(e){
     return null;
   }
 }
+
 
 async function apiPostUltimate_(action, payload){
   const url = window.API_URL || window.apiUrl || (typeof API_URL !== "undefined" ? API_URL : null);

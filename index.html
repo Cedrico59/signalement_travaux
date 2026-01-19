@@ -151,6 +151,21 @@
 .admin-actions{display:flex;gap:8px;align-items:center;justify-content:flex-end;margin-left:auto;}
 </style>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+
+<style>
+  /* ✅ aligne Historique / Déconnexion / Reports */
+  .topbar, .top-bar, header .actions, header .buttons, .nav-actions{
+    display:flex !important;
+    align-items:center !important;
+    gap:10px !important;
+  }
+  /* fallback: force buttons in header to be aligned */
+  header button, header .btn, header a.btn{
+    display:inline-flex !important;
+    align-items:center !important;
+  }
+</style>
+
 </head>
 
 <body>
